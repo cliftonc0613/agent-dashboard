@@ -4,12 +4,31 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================
+   REBEL ALLIANCE COMMAND CENTER DESIGN SYSTEM
+   ------------------------------------------------------------
+   Dark-first sci-fi terminal aesthetic. Hand-crafted CSS drives
+   the visual character — Tailwind utilities handle layout only.
+   ============================================================ */
+
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Rebel Alliance brand tokens (OKLCH) */
+  --color-rebel-void: var(--rebel-void);
+  --color-rebel-surface: var(--rebel-surface);
+  --color-rebel-panel: var(--rebel-panel);
+  --color-rebel-border: var(--rebel-border);
+  --color-rebel-amber: var(--rebel-amber);
+  --color-rebel-orange: var(--rebel-orange);
+  --color-rebel-red: var(--rebel-red);
+  --color-rebel-parchment: var(--rebel-parchment);
+  --color-rebel-dim: var(--rebel-dim);
+  --color-rebel-faint: var(--rebel-faint);
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+
+  /* shadcn base mapping (kept for component primitives) */
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,6 +58,9 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,82 +71,371 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* ---- Rebel Alliance brand tokens (OKLCH) ---- */
+  --rebel-void: oklch(0.12 0.012 70);          /* deepest background */
+  --rebel-surface: oklch(0.16 0.015 65);       /* body surface */
+  --rebel-panel: oklch(0.19 0.018 65);         /* panel fill */
+  --rebel-border: oklch(0.32 0.035 70);        /* hairline borders */
+  --rebel-amber: oklch(0.82 0.17 75);          /* primary signal amber */
+  --rebel-orange: oklch(0.72 0.19 45);         /* warning / accent */
+  --rebel-red: oklch(0.62 0.22 25);            /* alarm */
+  --rebel-parchment: oklch(0.93 0.04 85);      /* primary text */
+  --rebel-dim: oklch(0.68 0.03 80);            /* secondary text */
+  --rebel-faint: oklch(0.48 0.02 80);          /* tertiary / offline */
+
+  /* ---- shadcn base tokens mapped to Rebel palette ---- */
+  --background: var(--rebel-void);
+  --foreground: var(--rebel-parchment);
+  --card: var(--rebel-panel);
+  --card-foreground: var(--rebel-parchment);
+  --popover: var(--rebel-panel);
+  --popover-foreground: var(--rebel-parchment);
+  --primary: var(--rebel-amber);
+  --primary-foreground: var(--rebel-void);
+  --secondary: var(--rebel-surface);
+  --secondary-foreground: var(--rebel-parchment);
+  --muted: var(--rebel-surface);
+  --muted-foreground: var(--rebel-dim);
+  --accent: var(--rebel-amber);
+  --accent-foreground: var(--rebel-void);
+  --destructive: var(--rebel-red);
+  --border: var(--rebel-border);
+  --input: var(--rebel-border);
+  --ring: var(--rebel-amber);
+  --chart-1: var(--rebel-amber);
+  --chart-2: var(--rebel-orange);
+  --chart-3: var(--rebel-red);
+  --chart-4: var(--rebel-dim);
+  --chart-5: var(--rebel-faint);
+  --radius: 0.125rem;  /* near-zero — we want sharp corners */
+  --sidebar: var(--rebel-surface);
+  --sidebar-foreground: var(--rebel-parchment);
+  --sidebar-primary: var(--rebel-amber);
+  --sidebar-primary-foreground: var(--rebel-void);
+  --sidebar-accent: var(--rebel-panel);
+  --sidebar-accent-foreground: var(--rebel-parchment);
+  --sidebar-border: var(--rebel-border);
+  --sidebar-ring: var(--rebel-amber);
 }
 
+/* dark class kept for shadcn dark-variant consumers; tokens match root since we're dark-first */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: var(--rebel-void);
+  --foreground: var(--rebel-parchment);
+  --card: var(--rebel-panel);
+  --card-foreground: var(--rebel-parchment);
+  --popover: var(--rebel-panel);
+  --popover-foreground: var(--rebel-parchment);
+  --primary: var(--rebel-amber);
+  --primary-foreground: var(--rebel-void);
+  --secondary: var(--rebel-surface);
+  --secondary-foreground: var(--rebel-parchment);
+  --muted: var(--rebel-surface);
+  --muted-foreground: var(--rebel-dim);
+  --accent: var(--rebel-amber);
+  --accent-foreground: var(--rebel-void);
+  --destructive: var(--rebel-red);
+  --border: var(--rebel-border);
+  --input: var(--rebel-border);
+  --ring: var(--rebel-amber);
 }
+
+/* ============================================================
+   BASE RESET + CRT SCANLINE TEXTURE
+   ============================================================ */
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--rebel-border);
+    outline-color: color-mix(in oklch, var(--rebel-amber) 50%, transparent);
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
+    color-scheme: dark;
   }
+
+  body {
+    background-color: var(--rebel-void);
+    color: var(--rebel-parchment);
+    position: relative;
+    overflow-x: hidden;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  /* CRT scanline overlay — fixed over entire viewport */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 2px,
+      rgba(0, 0, 0, 0.18) 3px,
+      transparent 4px
+    );
+    pointer-events: none;
+    z-index: 100;
+    mix-blend-mode: multiply;
+  }
+
+  /* Ambient glow — radial amber pulse */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(
+        ellipse 80% 60% at 50% 0%,
+        color-mix(in oklch, var(--rebel-amber) 10%, transparent) 0%,
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 50% 110%,
+        color-mix(in oklch, var(--rebel-orange) 8%, transparent) 0%,
+        transparent 60%
+      );
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+/* ============================================================
+   REBEL PANEL — angular cut-corner frame with grid texture
+   ============================================================ */
+
+.rebel-panel {
+  position: relative;
+  background-color: color-mix(in oklch, var(--rebel-panel) 92%, transparent);
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklch, var(--rebel-border) 25%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--rebel-border) 25%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  border: 1px solid var(--rebel-border);
+  padding: 1.75rem 2rem;
+  /* Angular cut corners — upper-right + lower-left */
+  clip-path: polygon(
+    0 0,
+    calc(100% - 18px) 0,
+    100% 18px,
+    100% 100%,
+    18px 100%,
+    0 calc(100% - 18px)
+  );
+  box-shadow:
+    inset 0 0 0 1px color-mix(in oklch, var(--rebel-amber) 6%, transparent),
+    0 0 32px -12px color-mix(in oklch, var(--rebel-amber) 25%, transparent);
+}
+
+/* Corner accent tick in the upper-left */
+.rebel-panel::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid var(--rebel-amber);
+  border-left: 2px solid var(--rebel-amber);
+  pointer-events: none;
+}
+
+/* Corner accent tick in the lower-right */
+.rebel-panel::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 2px solid var(--rebel-amber);
+  border-right: 2px solid var(--rebel-amber);
+  pointer-events: none;
+}
+
+/* ============================================================
+   READOUT TYPOGRAPHY — monospace data display
+   ============================================================ */
+
+.readout-label {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--rebel-amber);
+  line-height: 1;
+}
+
+.readout-value {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--rebel-parchment);
+  line-height: 1.4;
+}
+
+.readout-value--dim {
+  color: var(--rebel-faint);
+}
+
+.readout-value--amber {
+  color: var(--rebel-amber);
+}
+
+/* ============================================================
+   REBEL DIVIDER — horizontal rule with amber pip diamond
+   ============================================================ */
+
+.rebel-divider {
+  position: relative;
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    var(--rebel-border) 15%,
+    var(--rebel-border) 85%,
+    transparent 100%
+  );
+  margin: 1.75rem 0;
+}
+
+.rebel-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background-color: var(--rebel-amber);
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: 0 0 10px color-mix(in oklch, var(--rebel-amber) 80%, transparent);
+}
+
+/* ============================================================
+   BTN-REBEL — angular command button (override shadcn)
+   ============================================================ */
+
+.btn-rebel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 0.75rem 1.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--rebel-amber);
+  background-color: transparent;
+  border: 1px solid var(--rebel-amber);
+  border-radius: 0;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 80ms ease;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% 100%,
+    10px 100%,
+    0 calc(100% - 10px)
+  );
+  position: relative;
+}
+
+.btn-rebel:hover {
+  background-color: var(--rebel-amber);
+  color: var(--rebel-void);
+  box-shadow: 0 0 20px color-mix(in oklch, var(--rebel-amber) 50%, transparent);
+}
+
+.btn-rebel:active {
+  transform: translateY(1px);
+}
+
+.btn-rebel-solid {
+  background-color: var(--rebel-amber);
+  color: var(--rebel-void);
+  box-shadow: 0 0 14px -2px color-mix(in oklch, var(--rebel-amber) 45%, transparent);
+}
+
+.btn-rebel-solid:hover {
+  background-color: transparent;
+  color: var(--rebel-amber);
+  box-shadow: 0 0 20px color-mix(in oklch, var(--rebel-amber) 35%, transparent);
+}
+
+/* ============================================================
+   STATUS INDICATORS
+   ============================================================ */
+
+@keyframes rebel-ping {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) rotate(45deg) scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: translateY(-50%) rotate(45deg) scale(0.7);
+  }
+}
+
+.status-live {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding-left: 1.125rem;
+  color: var(--rebel-amber);
+}
+
+.status-live::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  background-color: var(--rebel-amber);
+  transform: translateY(-50%) rotate(45deg);
+  box-shadow: 0 0 10px color-mix(in oklch, var(--rebel-amber) 90%, transparent);
+  animation: rebel-ping 1.6s ease-in-out infinite;
+}
+
+.status-offline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding-left: 1.125rem;
+  color: var(--rebel-faint);
+}
+
+.status-offline::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  background-color: var(--rebel-faint);
+  transform: translateY(-50%) rotate(45deg);
 }
