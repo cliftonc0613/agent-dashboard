@@ -144,7 +144,7 @@ export default function Home() {
             Acknowledge &nbsp;/&nbsp; Continue
           </Button>
           <span className="readout-label">
-            Tailwind v4 &middot; shadcn &middot; Convex
+            Tailwind v4 &middot; shadcn &middot; Convex &middot; Phase 1 gate
           </span>
         </div>
       </main>
