@@ -2,6 +2,7 @@
 
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { callAgent } from "../lib/anthropic";
 import { addTwoNumbersSchema } from "../lib/toolSchemas";
 
@@ -36,7 +37,7 @@ import { addTwoNumbersSchema } from "../lib/toolSchemas";
 export const runSmokeTest = internalAction({
   args: {},
   handler: async (ctx) => {
-    const actionId = await ctx.runMutation(
+    const actionId: Id<"agentActions"> = await ctx.runMutation(
       internal.agentActions.startInFlight,
       {
         agentName: "test",
