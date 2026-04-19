@@ -91,13 +91,13 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Status</span>
               <span className="readout-value">
-                <span className="status-live">Foundation layer</span>
+                <span className="status-live">Shared infrastructure</span>
               </span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Phase</span>
-              <span className="readout-value">01 / 12</span>
+              <span className="readout-value">03 / 12</span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -113,7 +113,7 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Agents</span>
               <span className="readout-value readout-value--dim">
-                offline &mdash; Phase 3+
+                offline &mdash; Phase 4+
               </span>
             </div>
 
@@ -144,7 +144,7 @@ export default function Home() {
             Acknowledge &nbsp;/&nbsp; Continue
           </Button>
           <span className="readout-label">
-            Tailwind v4 &middot; shadcn &middot; Convex &middot; Phase 1 gate
+            callAgent &middot; toolSchemas &middot; Telegram &middot; Phase 3 gate
           </span>
         </div>
       </main>
