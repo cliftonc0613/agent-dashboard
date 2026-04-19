@@ -102,6 +102,7 @@ export default defineSchema({
       v.literal("in_flight"),
       v.literal("success"),
       v.literal("failed"),
+      v.literal("cost_ceiling_hit"),
     ),
     inputTokens: v.optional(v.number()),
     outputTokens: v.optional(v.number()),
