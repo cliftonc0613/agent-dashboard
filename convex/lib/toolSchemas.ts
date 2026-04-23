@@ -11,12 +11,11 @@
  * payload the 03-03 smoke test uses to drive the callAgent wrapper
  * end-to-end against the live Anthropic API.
  *
- * Phase 4 extends this file with the real agent schemas — expected additions:
+ * Phase 4 extends this file with the real agent schemas:
  *   - prospectScoreSchema     (R2 — prospect triage)
  *   - brandAndContentSchema   (Leia — StoryBrand brief + site.json copy)
  *   - reviewSchema            (Ahsoka — vision QA verdict)
  *   - outreachSchema          (Han — LinkedIn message draft)
- *   - finalizedOutreachSchema (Han — post-human-approval send payload)
  *
  * Why raw JSON Schema rather than zod:
  *   Anthropic's `input_schema` accepts a JSON-Schema object directly and the
@@ -37,5 +36,381 @@ export const addTwoNumbersSchema = {
       b: { type: "number", description: "Second addend" },
     },
     required: ["a", "b"],
+  },
+} as const;
+
+export const prospectScoreSchema = {
+  name: "submit_prospect_score",
+  description:
+    "Submit R2's triage of a single candidate local business. Includes site quality scoring, rebuild opportunity, 3-5 verbatim specificHooks, and a disqualify flag for wrong-fit candidates.",
+  input_schema: {
+    type: "object",
+    properties: {
+      siteQualityScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "0=broken/dead, 10=modern professional. Most local-service sites score 2-5.",
+      },
+      mobileIssues: {
+        type: "array",
+        items: { type: "string" },
+        maxItems: 5,
+        description:
+          "Observed mobile rendering problems: 'no viewport meta', 'text overflows', 'buttons too small', etc.",
+      },
+      seoIssues: {
+        type: "array",
+        items: { type: "string" },
+        maxItems: 5,
+        description:
+          "Observed SEO gaps: 'no meta description', 'no H1', 'no schema.org LocalBusiness', 'no Google Business link'.",
+      },
+      rebuildOpportunity: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description: "0=already great, 10=total rebuild earns huge lift.",
+      },
+      disqualify: {
+        type: "boolean",
+        description:
+          "TRUE if business is wrong-fit: out of business, corporate chain, wrong industry, already-great site, obvious competitor.",
+      },
+      disqualifyReason: {
+        type: "string",
+        description:
+          "Short explanation (required when disqualify=true, ignored otherwise).",
+      },
+      inferredBusinessType: {
+        type: "string",
+        description:
+          "Specific type as observed, e.g. 'residential plumbing', 'commercial HVAC', 'auto detailing mobile'.",
+      },
+      specificHooks: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 3,
+        maxItems: 5,
+        description:
+          "VERBATIM factual details from the business: named services, review quotes, years in business, specific areas. NO generic hooks. These are cited in outreach.",
+      },
+      painPointSignals: {
+        type: "array",
+        items: { type: "string" },
+        maxItems: 5,
+        description:
+          "Concrete problems observable in the current site: 'copyright 2019', 'no contact form', 'phone number is an image (uncrawlable)', 'no service pages', 'no reviews'.",
+      },
+    },
+    required: [
+      "siteQualityScore",
+      "mobileIssues",
+      "seoIssues",
+      "rebuildOpportunity",
+      "disqualify",
+      "inferredBusinessType",
+      "specificHooks",
+      "painPointSignals",
+    ],
+  },
+} as const;
+
+export const brandAndContentSchema = {
+  name: "submit_brand_and_content",
+  description:
+    "Produce complete brand brief + local-business-builder data + StoryBrand homepage copy for a single prospect. Chewie (Phase 5) writes this into the Astro site files.",
+  input_schema: {
+    type: "object",
+    properties: {
+      layoutVariant: {
+        type: "string",
+        enum: ["trades-trust", "service-warmth", "premium-professional"],
+        description:
+          "trades-trust = plumbers/electricians/HVAC/roofers. service-warmth = cleaners/landscapers/pest. premium-professional = contractors/pool services/auto detailing.",
+      },
+      brand: {
+        type: "object",
+        properties: {
+          emotion: { type: "string", description: "One-line emotional register to hit." },
+          voice: { type: "string", description: "One-line voice description." },
+          palette: {
+            type: "object",
+            properties: {
+              primary: { type: "string", description: "Hex color #RRGGBB." },
+              secondary: { type: "string", description: "Hex color #RRGGBB." },
+              accent: { type: "string", description: "Hex color #RRGGBB." },
+            },
+            required: ["primary", "secondary", "accent"],
+          },
+          fonts: {
+            type: "object",
+            properties: {
+              heading: { type: "string", description: "Google Font name for headings." },
+              body: { type: "string", description: "Google Font name for body." },
+            },
+            required: ["heading", "body"],
+          },
+        },
+        required: ["emotion", "voice", "palette", "fonts"],
+      },
+      businessData: {
+        type: "object",
+        description: "The 4 local-business-builder data files as JSON.",
+        properties: {
+          business: {
+            type: "object",
+            description:
+              "Core business facts: name, tagline, phone, email, address, hours, license, years in business, owner name.",
+          },
+          serviceAreas: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "City/neighborhood names to generate programmatic pages for. Typically 5-15.",
+          },
+          serviceTypes: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                slug: { type: "string" },
+                name: { type: "string" },
+                shortDescription: { type: "string" },
+                longDescription: { type: "string" },
+              },
+              required: ["slug", "name", "shortDescription", "longDescription"],
+            },
+            description: "Distinct services with SEO-ready descriptions. Typically 5-10.",
+          },
+          seoContentSeed: {
+            type: "object",
+            description:
+              "Seed data for FAQ generator: audience-level questions, niche-specific concerns, local landmarks/references.",
+          },
+        },
+        required: ["business", "serviceAreas", "serviceTypes", "seoContentSeed"],
+      },
+      storyBrandCopy: {
+        type: "object",
+        description:
+          "Homepage copy using StoryBrand 7-part framework. Customer is hero, business is guide.",
+        properties: {
+          headline: { type: "string", description: "6-word-max tagline." },
+          subheadline: { type: "string", description: "One sentence expanding the headline." },
+          problem: {
+            type: "object",
+            properties: {
+              external: { type: "string" },
+              internal: { type: "string" },
+              philosophical: { type: "string" },
+              villain: { type: "string" },
+            },
+            required: ["external", "internal", "philosophical", "villain"],
+          },
+          guide: {
+            type: "object",
+            properties: {
+              empathy: { type: "string" },
+              authority: { type: "string" },
+              authorityStats: {
+                type: "array",
+                items: { type: "string" },
+              },
+            },
+            required: ["empathy", "authority", "authorityStats"],
+          },
+          plan: {
+            type: "array",
+            minItems: 3,
+            maxItems: 3,
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                description: { type: "string" },
+              },
+              required: ["title", "description"],
+            },
+            description: "EXACTLY 3 steps.",
+          },
+          directCta: { type: "string" },
+          transitionalCta: { type: "string" },
+          successVision: { type: "string" },
+          stakes: {
+            type: "array",
+            minItems: 3,
+            maxItems: 3,
+            items: { type: "string" },
+            description: "EXACTLY 3 negative outcomes if customer does nothing.",
+          },
+          elevatorPitch: {
+            type: "object",
+            properties: {
+              long: { type: "string" },
+              condensed: { type: "string" },
+            },
+            required: ["long", "condensed"],
+          },
+        },
+        required: [
+          "headline",
+          "subheadline",
+          "problem",
+          "guide",
+          "plan",
+          "directCta",
+          "transitionalCta",
+          "successVision",
+          "stakes",
+          "elevatorPitch",
+        ],
+      },
+    },
+    required: ["layoutVariant", "brand", "businessData", "storyBrandCopy"],
+  },
+} as const;
+
+export const reviewSchema = {
+  name: "submit_review",
+  description:
+    "Ahsoka's review of a built site. Scores 5 dimensions (0-10 each), computes overall average, returns verdict.",
+  input_schema: {
+    type: "object",
+    properties: {
+      visualDesignScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description: "Professional hierarchy, spacing, layout coherence.",
+      },
+      storyBrandCopyScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "Hero message clarity, customer-as-hero framing, CTA legibility.",
+      },
+      mobileRenderingScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "iPhone 14 viewport. No broken layouts, text overflow, or invisible elements.",
+      },
+      seoBasicsScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "Meta description present, heading structure correct, LocalBusiness JSON-LD schema present.",
+      },
+      speedScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "Scored from the provided Browserless page-load-ms. 10=<1500ms, 7=1500-2500ms, 4=2500-4000ms, 1=>4000ms.",
+      },
+      overallScore: {
+        type: "number",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "Average of the 5 dimension scores. Verdict thresholds: 8+ approved, 6-7 needs_manual_review, <6 rejected.",
+      },
+      verdict: {
+        type: "string",
+        enum: ["approved", "needs_manual_review", "rejected"],
+        description:
+          "MUST match overall score thresholds. 8+ = approved, 6.0-7.9 = needs_manual_review, <6 = rejected.",
+      },
+      findings: {
+        type: "array",
+        items: { type: "string" },
+        maxItems: 10,
+        description: "Each finding cites which dimension.",
+      },
+      criticalFixes: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "MUST-fix issues blocking approval (empty if verdict=approved).",
+      },
+    },
+    required: [
+      "visualDesignScore",
+      "storyBrandCopyScore",
+      "mobileRenderingScore",
+      "seoBasicsScore",
+      "speedScore",
+      "overallScore",
+      "verdict",
+      "findings",
+      "criticalFixes",
+    ],
+  },
+} as const;
+
+export const outreachSchema = {
+  name: "submit_outreach",
+  description:
+    "Han's LinkedIn DM draft. Must contain exactly one {{SITE_URL}} placeholder and cite at least one verbatim specificHook from the prospect row.",
+  input_schema: {
+    type: "object",
+    properties: {
+      channel: {
+        type: "string",
+        enum: ["linkedin_dm"],
+        description: "Phase 4 locks to LinkedIn DM only.",
+      },
+      body: {
+        type: "string",
+        maxLength: 1200,
+        description:
+          "The DM body. 50-100 words. Contains EXACTLY ONE {{SITE_URL}} placeholder. Cites at least one verbatim specificHook. No banned AI-speak.",
+      },
+      personalizationHooks: {
+        type: "array",
+        items: { type: "string" },
+        description:
+          "The specificHooks from the prospect row that this draft cites verbatim.",
+      },
+      personalizationDepthScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "Self-score: how specifically personalized is this to THIS business?",
+      },
+      conversationalToneScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "Self-score: how naturally conversational is this vs. corporate outreach speak?",
+      },
+      humanScore: {
+        type: "integer",
+        minimum: 0,
+        maximum: 10,
+        description:
+          "MUST equal MIN(personalizationDepthScore, conversationalToneScore).",
+      },
+      humanScoreReason: {
+        type: "string",
+        description: "One-line explanation of the floor score.",
+      },
+    },
+    required: [
+      "channel",
+      "body",
+      "personalizationHooks",
+      "personalizationDepthScore",
+      "conversationalToneScore",
+      "humanScore",
+      "humanScoreReason",
+    ],
   },
 } as const;
