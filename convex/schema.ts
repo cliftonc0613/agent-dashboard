@@ -62,6 +62,26 @@ export default defineSchema({
     retryCount: v.number(),
     takedownAt: v.optional(v.number()),
     templateVersion: v.optional(v.string()),
+
+    // Leia Stage 1 output — brand brief + 4 data files + StoryBrand copy. v.any()
+    // because the schema is structured JSON whose shape is owned by Leia's tool
+    // schema (brandAndContentSchema in toolSchemas.ts) not enforced at the DB
+    // layer. Validated by Leia's tool_use response contract.
+    leiaOutput: v.optional(v.any()),
+
+    // Ahsoka's review — 5-dim scores + verdict + findings. v.any() for the same
+    // reason as leiaOutput: shape owned by reviewSchema.
+    ahsokaReview: v.optional(v.any()),
+
+    // Han's LinkedIn DM draft body. Contains exactly one {{SITE_URL}} placeholder
+    // until Phase 8 finalize step swaps the real deployed URL in.
+    hanDraft: v.optional(v.string()),
+
+    // Rejection reason populated when any agent validator rejects a prospect
+    // (e.g. Han draft had banned phrase, R2 scored disqualify=true, Ahsoka
+    // verdict=rejected). Read by the approval dashboard so humans can see why.
+    rejectionReason: v.optional(v.string()),
+
     buildSteps: v.object({
       repoCreated: v.boolean(),
       siteJsonPushed: v.boolean(),
