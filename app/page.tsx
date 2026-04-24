@@ -37,7 +37,7 @@ export default function Home() {
             Rebel Alliance &nbsp;//&nbsp; Command Center &nbsp;//&nbsp; Node 01
           </span>
           <span className="readout-label" style={{ color: "var(--rebel-faint)" }}>
-            v0.1.0 &middot; foundation
+            v0.4.0 &middot; stateless agents
           </span>
         </div>
 
@@ -91,13 +91,13 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Status</span>
               <span className="readout-value">
-                <span className="status-live">Shared infrastructure</span>
+                <span className="status-live">Stateless agents live</span>
               </span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Phase</span>
-              <span className="readout-value">03 / 12</span>
+              <span className="readout-value">05 / 12</span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -112,8 +112,8 @@ export default function Home() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Agents</span>
-              <span className="readout-value readout-value--dim">
-                offline &mdash; Phase 4+
+              <span className="readout-value">
+                R2 &middot; Leia &middot; Ahsoka &middot; Han
               </span>
             </div>
 
@@ -144,7 +144,7 @@ export default function Home() {
             Acknowledge &nbsp;/&nbsp; Continue
           </Button>
           <span className="readout-label">
-            callAgent &middot; toolSchemas &middot; Telegram &middot; Phase 3 gate
+            R2 &middot; Leia &middot; Ahsoka &middot; Han &middot; Phase 5 gate
           </span>
         </div>
       </main>
