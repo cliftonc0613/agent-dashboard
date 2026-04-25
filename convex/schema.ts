@@ -82,6 +82,19 @@ export default defineSchema({
     // verdict=rejected). Read by the approval dashboard so humans can see why.
     rejectionReason: v.optional(v.string()),
 
+    // Chewie naming contract — set ONCE on first attempt; reused verbatim on every retry
+    repoName: v.optional(v.string()),
+    customSubdomain: v.optional(v.string()),
+    cfProjectName: v.optional(v.string()),
+
+    // Two-URL pattern:
+    //   pagesDevUrl — *.pages.dev URL, written after step 5 (deployment).
+    //   siteUrl     — already exists in schema from Phase 4.
+    pagesDevUrl: v.optional(v.string()),
+
+    // Chewie's audit trail for inferences beyond literal prospect data
+    chewieNotes: v.optional(v.string()),
+
     buildSteps: v.object({
       repoCreated: v.boolean(),
       siteJsonPushed: v.boolean(),
