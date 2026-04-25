@@ -414,3 +414,74 @@ export const outreachSchema = {
     ],
   },
 } as const;
+
+export const chewieDataFilesSchema = {
+  name: "submit_data_files",
+  description:
+    "Submit the 4 Astro data file contents as TypeScript source strings, an 11-shade brand color scale derived from Leia's primary, and the short template SHA. The 4 config files are generated deterministically by Chewie — you don't need to produce them.",
+  input_schema: {
+    type: "object",
+    properties: {
+      businessTs: {
+        type: "string",
+        description:
+          "Full TypeScript source for src/data/business.ts. MUST export `business: Business` matching the Business interface (provided in the user message) and preserve the yearsInBusiness() helper verbatim. No __PLACEHOLDER__ tokens may remain. No em-dashes anywhere in the business voice.",
+      },
+      serviceAreasTs: {
+        type: "string",
+        description:
+          "Full TypeScript source for src/data/serviceAreas.ts. MUST export `serviceAreas: ServiceArea[]` with 6-12 entries, each with slug/name/county/state/zipCodes/population/lat/lng/description/featured/nearby. Preserve the getAreaBySlug/getNearbyAreas/getAreaName/getFeaturedAreas/getCounties helpers verbatim.",
+      },
+      serviceTypesTs: {
+        type: "string",
+        description:
+          "Full TypeScript source for src/data/serviceTypes.ts. MUST export `serviceTypes: ServiceType[]` with 6-10 entries. Each entry MUST have exactly 4 process steps and at least 1 priceRange. Icon field uses raw lucide names (e.g. 'droplets', 'wrench') without any prefix. Preserve the getServiceBySlug/getServiceName/getEmergencyServices/getFeaturedServices/getRelatedServices helpers verbatim.",
+      },
+      seoContentTs: {
+        type: "string",
+        description:
+          "Full TypeScript source for src/data/seoContent.ts. MUST export generateFaqs(service?, area?) with the 5 universal FAQs and per-service map. MUST export `reviews: Review[]` with 6+ entries, realistic author names, ratings 4-5, dates within the last 12 months as ISO strings. Preserve the getReviewsForPage/getAggregateRating helpers verbatim.",
+      },
+      brandColorScale: {
+        type: "object",
+        description:
+          "11-shade palette derived from Leia's primary hex. Used by Chewie's deterministic global.css generator to fill the __BRAND_50__..__BRAND_950__ placeholders. Each value is a hex string #RRGGBB.",
+        properties: {
+          brand50: { type: "string", description: "Hex #RRGGBB — lightest tint (~95% lightness)" },
+          brand100: { type: "string", description: "Hex #RRGGBB" },
+          brand200: { type: "string", description: "Hex #RRGGBB" },
+          brand300: { type: "string", description: "Hex #RRGGBB" },
+          brand400: { type: "string", description: "Hex #RRGGBB" },
+          brand500: { type: "string", description: "Hex #RRGGBB — Leia's primary hex, unchanged" },
+          brand600: { type: "string", description: "Hex #RRGGBB" },
+          brand700: { type: "string", description: "Hex #RRGGBB" },
+          brand800: { type: "string", description: "Hex #RRGGBB" },
+          brand900: { type: "string", description: "Hex #RRGGBB" },
+          brand950: { type: "string", description: "Hex #RRGGBB — darkest shade (~15% lightness)" },
+        },
+        required: [
+          "brand50", "brand100", "brand200", "brand300", "brand400",
+          "brand500", "brand600", "brand700", "brand800", "brand900", "brand950",
+        ],
+      },
+      templateVersion: {
+        type: "string",
+        description:
+          "8-char short SHA of the agent-site-template commit Chewie targeted. Passed in via the user message — echo it back so it lands on the prospect row for drift detection.",
+      },
+      _notes: {
+        type: "string",
+        description:
+          "Optional audit notes for inferences that went beyond literal prospect/leiaOutput data. Keep to a single paragraph. Empty string is fine if no inferences were needed.",
+      },
+    },
+    required: [
+      "businessTs",
+      "serviceAreasTs",
+      "serviceTypesTs",
+      "seoContentTs",
+      "brandColorScale",
+      "templateVersion",
+    ],
+  },
+} as const;
