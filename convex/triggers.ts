@@ -55,3 +55,14 @@ export const triggerHan = mutation({
     return { scheduled: true };
   },
 });
+
+export const triggerChewie = mutation({
+  args: {
+    prospectId: v.id("prospects"),
+    runId: v.optional(v.id("runs")),
+  },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(0, internal.agents.chewie.run, args);
+    return { scheduled: true };
+  },
+});
