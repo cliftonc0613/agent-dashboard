@@ -68,6 +68,11 @@ export const patch = internalMutation({
     rejectionReason: v.optional(v.string()),
     siteUrl: v.optional(v.string()),
     templateVersion: v.optional(v.string()),
+    repoName: v.optional(v.string()),
+    customSubdomain: v.optional(v.string()),
+    cfProjectName: v.optional(v.string()),
+    pagesDevUrl: v.optional(v.string()),
+    chewieNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...patch } = args;
@@ -76,5 +81,45 @@ export const patch = internalMutation({
       if (val !== undefined) cleanPatch[k] = val;
     }
     await ctx.db.patch(id, cleanPatch);
+  },
+});
+
+export const markBuildStep = internalMutation({
+  args: {
+    id: v.id("prospects"),
+    step: v.union(
+      v.literal("repoCreated"),
+      v.literal("siteJsonPushed"),
+      v.literal("projectCreated"),
+      v.literal("domainAdded"),
+      v.literal("deployed"),
+      v.literal("certReady"),
+      v.literal("verified"),
+    ),
+    extra: v.optional(
+      v.object({
+        repoName: v.optional(v.string()),
+        customSubdomain: v.optional(v.string()),
+        cfProjectName: v.optional(v.string()),
+        pagesDevUrl: v.optional(v.string()),
+        siteUrl: v.optional(v.string()),
+        templateVersion: v.optional(v.string()),
+        chewieNotes: v.optional(v.string()),
+      }),
+    ),
+  },
+  handler: async (ctx, { id, step, extra }) => {
+    const prospect = await ctx.db.get(id);
+    if (!prospect) {
+      throw new Error(`Prospect ${id} not found`);
+    }
+    const newSteps = { ...prospect.buildSteps, [step]: true };
+    const patch: Record<string, unknown> = { buildSteps: newSteps };
+    if (extra) {
+      for (const [k, val] of Object.entries(extra)) {
+        if (val !== undefined) patch[k] = val;
+      }
+    }
+    await ctx.db.patch(id, patch);
   },
 });
