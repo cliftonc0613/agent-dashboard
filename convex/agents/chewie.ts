@@ -46,6 +46,12 @@ import {
   pushFiles,
   fetchTemplateSha,
 } from "../lib/github";
+import {
+  createPagesProject,
+  attachCustomDomain,
+  pollDeploymentReady,
+  pollSslReady,
+} from "../lib/cloudflare";
 
 // ---------------------------------------------------------------------------
 // System prompt — composed from rebel-alliance-chewie-voice SKILL.md.
@@ -341,15 +347,17 @@ export const run = internalAction({
       const templateRepo = process.env.TEMPLATE_REPO;
       const outreachDomain = process.env.OUTREACH_DOMAIN;
       const cfAccountId = process.env.CF_ACCOUNT_ID;
+      const cfApiToken = process.env.CF_API_TOKEN;
       if (
         !githubToken ||
         !githubUsername ||
         !templateRepo ||
         !outreachDomain ||
-        !cfAccountId
+        !cfAccountId ||
+        !cfApiToken
       ) {
         throw new Error(
-          "Chewie: missing required env vars (GITHUB_TOKEN, GITHUB_USERNAME, TEMPLATE_REPO, OUTREACH_DOMAIN, CF_ACCOUNT_ID)",
+          "Chewie: missing required env vars (GITHUB_TOKEN, GITHUB_USERNAME, TEMPLATE_REPO, OUTREACH_DOMAIN, CF_ACCOUNT_ID, CF_API_TOKEN)",
         );
       }
 
@@ -607,7 +615,116 @@ export const run = internalAction({
         });
       }
 
-      // TODO(5-04): steps 3-6 (projectCreated, domainAdded, deployed, certReady) go here.
+      // ---------------------------------------------------------------------
+      // STEP 3 — projectCreated
+      // ---------------------------------------------------------------------
+      const prospectAfterStep2 = await ctx.runQuery(internal.prospects.get, {
+        id: args.prospectId,
+      });
+      if (!prospectAfterStep2)
+        throw new Error(`Prospect ${args.prospectId} disappeared`);
+
+      let pagesDevUrl: string | undefined = prospectAfterStep2.pagesDevUrl as string | undefined;
+      if (!prospectAfterStep2.buildSteps.projectCreated) {
+        const cfResult = await createPagesProject({
+          cfAccountId,
+          cfApiToken,
+          projectName: cfProjectName,
+          githubOwner: githubUsername,
+          repoName,
+        });
+        pagesDevUrl = `https://${cfResult.subdomain}`;
+        await ctx.runMutation(internal.prospects.markBuildStep, {
+          id: args.prospectId,
+          step: "projectCreated",
+          extra: { cfProjectName, pagesDevUrl },
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // STEP 4 — domainAdded
+      // ---------------------------------------------------------------------
+      const prospectAfterStep3 = await ctx.runQuery(internal.prospects.get, {
+        id: args.prospectId,
+      });
+      if (!prospectAfterStep3)
+        throw new Error(`Prospect ${args.prospectId} disappeared`);
+
+      if (!prospectAfterStep3.buildSteps.domainAdded) {
+        await attachCustomDomain({
+          cfAccountId,
+          cfApiToken,
+          projectName: cfProjectName,
+          domainName: customSubdomain,
+        });
+        await ctx.runMutation(internal.prospects.markBuildStep, {
+          id: args.prospectId,
+          step: "domainAdded",
+          extra: { customSubdomain },
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // STEP 5 — deployed
+      // ---------------------------------------------------------------------
+      const prospectAfterStep4 = await ctx.runQuery(internal.prospects.get, {
+        id: args.prospectId,
+      });
+      if (!prospectAfterStep4)
+        throw new Error(`Prospect ${args.prospectId} disappeared`);
+
+      if (!prospectAfterStep4.buildSteps.deployed) {
+        try {
+          const deployment = await pollDeploymentReady({
+            cfAccountId,
+            cfApiToken,
+            projectName: cfProjectName,
+          });
+          if (!pagesDevUrl) pagesDevUrl = deployment.url;
+          await ctx.runMutation(internal.prospects.markBuildStep, {
+            id: args.prospectId,
+            step: "deployed",
+            extra: { pagesDevUrl },
+          });
+        } catch (buildErr) {
+          const reason =
+            buildErr instanceof Error ? buildErr.message : String(buildErr);
+          await ctx.runMutation(internal.prospects.patch, {
+            id: args.prospectId,
+            status: "failed",
+            rejectionReason: `chewie_build: ${reason}`,
+          });
+          throw buildErr;
+        }
+      }
+
+      // ---------------------------------------------------------------------
+      // STEP 6 — certReady + final status transition
+      // ---------------------------------------------------------------------
+      const prospectAfterStep5 = await ctx.runQuery(internal.prospects.get, {
+        id: args.prospectId,
+      });
+      if (!prospectAfterStep5)
+        throw new Error(`Prospect ${args.prospectId} disappeared`);
+
+      if (!prospectAfterStep5.buildSteps.certReady) {
+        await pollSslReady({
+          cfAccountId,
+          cfApiToken,
+          projectName: cfProjectName,
+          domainName: customSubdomain,
+        });
+        await ctx.runMutation(internal.prospects.markBuildStep, {
+          id: args.prospectId,
+          step: "certReady",
+          extra: { siteUrl: customDomainUrl },
+        });
+      }
+
+      await ctx.runMutation(internal.prospects.patch, {
+        id: args.prospectId,
+        status: "site_built",
+      });
 
       await ctx.runMutation(internal.agentActions.complete, {
         id: actionId,
@@ -624,8 +741,8 @@ export const run = internalAction({
         repoName,
         repoUrl: `https://github.com/${githubUsername}/${repoName}`,
         customSubdomain,
-        cfProjectName,
-        fileMapLength: fileMap.length,
+        pagesDevUrl,
+        siteUrl: customDomainUrl,
         templateVersion,
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
