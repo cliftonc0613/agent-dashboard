@@ -40,8 +40,12 @@ import {
   deriveBrandColorScale,
   type BrandColorScale,
 } from "../lib/chewieDeterministic";
-// markBuildStep calls land in 5-03 (GitHub) and 5-04 (Cloudflare Pages).
-// Importing the symbol now keeps the wiring visible at this hand-off seam.
+import {
+  generateRepoFromTemplate,
+  pollRepoReady,
+  pushFiles,
+  fetchTemplateSha,
+} from "../lib/github";
 
 // ---------------------------------------------------------------------------
 // System prompt — composed from rebel-alliance-chewie-voice SKILL.md.
@@ -332,13 +336,20 @@ export const run = internalAction({
         );
       }
 
+      const githubToken = process.env.GITHUB_TOKEN;
       const githubUsername = process.env.GITHUB_USERNAME;
       const templateRepo = process.env.TEMPLATE_REPO;
       const outreachDomain = process.env.OUTREACH_DOMAIN;
       const cfAccountId = process.env.CF_ACCOUNT_ID;
-      if (!githubUsername || !templateRepo || !outreachDomain || !cfAccountId) {
+      if (
+        !githubToken ||
+        !githubUsername ||
+        !templateRepo ||
+        !outreachDomain ||
+        !cfAccountId
+      ) {
         throw new Error(
-          "Chewie: missing required env vars (GITHUB_USERNAME, TEMPLATE_REPO, OUTREACH_DOMAIN, CF_ACCOUNT_ID)",
+          "Chewie: missing required env vars (GITHUB_TOKEN, GITHUB_USERNAME, TEMPLATE_REPO, OUTREACH_DOMAIN, CF_ACCOUNT_ID)",
         );
       }
 
@@ -368,9 +379,13 @@ export const run = internalAction({
       }
       const customDomainUrl = `https://${customSubdomain}`;
 
-      // TODO(5-03): replace with real fetchTemplateSha() against
-      // GITHUB_USERNAME/TEMPLATE_REPO HEAD via the GitHub Contents API.
-      const templateVersion = "stub-sha";
+      const templateVersion = await fetchTemplateSha({
+        ctx,
+        githubToken,
+        templateRepo,
+        runId: args.runId,
+        prospectId: args.prospectId,
+      });
 
       const contextBlob = [
         "## Prospect",
@@ -421,8 +436,6 @@ export const run = internalAction({
         "Now call submit_data_files with the 4 TypeScript file sources and brandColorScale.",
       ].join("\n");
 
-      // TODO(5-03): after this Claude call, push fileMap to GitHub via
-      // internal.lib.github helpers — repo create + 8-file push.
       const result = await callAgent({
         ctx,
         agentName: "chewie",
@@ -501,8 +514,6 @@ export const run = internalAction({
         { path: "src/data/seoContent.ts", content: rawOutput.seoContentTs },
       ];
 
-      // TODO(5-04): CF project create + domain attach + deployment poll +
-      // SSL poll happen here. For 5-02 we log the fileMap and stop.
       console.log(
         `[chewie] naming triple: repoName=${repoName} customSubdomain=${customSubdomain} cfProjectName=${cfProjectName}`,
       );
@@ -515,14 +526,88 @@ export const run = internalAction({
         );
       }
 
+      // chewieNotes is written via patch (markBuildStep extras handles the
+      // naming triple + templateVersion below). Splitting these writes keeps
+      // each mutation aligned with its semantic owner.
       await ctx.runMutation(internal.prospects.patch, {
         id: args.prospectId,
-        repoName,
-        customSubdomain,
-        cfProjectName,
-        templateVersion: rawOutput.templateVersion,
         chewieNotes: rawOutput._notes ?? "",
       });
+
+      // Re-read prospect so buildSteps reflects anything marked by a
+      // concurrent or prior run attempt before we hit any external API.
+      const prospectPost = await ctx.runQuery(internal.prospects.get, {
+        id: args.prospectId,
+      });
+      if (!prospectPost) {
+        throw new Error(`Prospect ${args.prospectId} disappeared`);
+      }
+
+      // ---------------------------------------------------------------------
+      // STEP 1 — repoCreated
+      // ---------------------------------------------------------------------
+      if (!prospectPost.buildSteps.repoCreated) {
+        await generateRepoFromTemplate({
+          ctx,
+          githubToken,
+          templateRepo,
+          owner: githubUsername,
+          repoName,
+          isPrivate: true,
+          runId: args.runId,
+          prospectId: args.prospectId,
+        });
+
+        await pollRepoReady({
+          ctx,
+          githubToken,
+          owner: githubUsername,
+          repoName,
+          runId: args.runId,
+          prospectId: args.prospectId,
+        });
+
+        await ctx.runMutation(internal.prospects.markBuildStep, {
+          id: args.prospectId,
+          step: "repoCreated",
+          extra: {
+            repoName,
+            customSubdomain,
+            cfProjectName,
+            templateVersion,
+          },
+        });
+      }
+
+      // ---------------------------------------------------------------------
+      // STEP 2 — siteJsonPushed
+      // ---------------------------------------------------------------------
+      const prospectAfterStep1 = await ctx.runQuery(internal.prospects.get, {
+        id: args.prospectId,
+      });
+      if (!prospectAfterStep1) {
+        throw new Error(`Prospect ${args.prospectId} disappeared`);
+      }
+
+      if (!prospectAfterStep1.buildSteps.siteJsonPushed) {
+        await pushFiles({
+          ctx,
+          githubToken,
+          owner: githubUsername,
+          repoName,
+          files: fileMap,
+          commitMessage: "chewie: populate site data",
+          runId: args.runId,
+          prospectId: args.prospectId,
+        });
+
+        await ctx.runMutation(internal.prospects.markBuildStep, {
+          id: args.prospectId,
+          step: "siteJsonPushed",
+        });
+      }
+
+      // TODO(5-04): steps 3-6 (projectCreated, domainAdded, deployed, certReady) go here.
 
       await ctx.runMutation(internal.agentActions.complete, {
         id: actionId,
@@ -537,9 +622,11 @@ export const run = internalAction({
         ok: true as const,
         prospectId: args.prospectId,
         repoName,
+        repoUrl: `https://github.com/${githubUsername}/${repoName}`,
         customSubdomain,
         cfProjectName,
         fileMapLength: fileMap.length,
+        templateVersion,
         inputTokens: result.inputTokens,
         outputTokens: result.outputTokens,
         costUsd: result.costUsd,
