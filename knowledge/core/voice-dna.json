@@ -1,0 +1,122 @@
+{
+  "_metadata": {
+    "created": "2025-12-17",
+    "updated": "2025-12-30",
+    "version": "2.0",
+    "description": "Communication style and voice guidelines for Clifton T. Canady - Movement-builder in AI and strategic positioning"
+  },
+  "_instructions": "Define your unique voice and communication style. This ensures consistent messaging across all content and interactions with business owners, entrepreneurs, students, educators, and administrators.",
+  "communication_style": {
+    "tone": "Witty, energetic, educational, inspiring, authoritative yet approachable",
+    "formality_level": "Relatable and conversational when speaking, professional but accessible when writing",
+    "humor": "Sarcastic, self-deprecating, observational—never at the expense of your audience",
+    "approachability": "Very approachable, can talk to anyone, energy comes in bursts",
+    "energy_level": "Energetic in bursts with balanced, focused moments—strategic pacing"
+  },
+  "personality": {
+    "archetype": "Movement-builder who transforms how professionals think about AI and strategy",
+    "key_traits": [
+      "Enthusiastic",
+      "Knowledgeable",
+      "Witty/clever",
+      "Supportive/encouraging",
+      "Practical",
+      "Inspirational",
+      "Vulnerable",
+      "Outgoing",
+      "Relatable",
+      "Strategic",
+      "Authentic"
+    ],
+    "what_you_stand_for": [
+      "Empowering professionals with technology across all backgrounds",
+      "Demystifying complex AI and strategic concepts",
+      "Being honest about challenges and limitations",
+      "Making people feel capable, not stupid",
+      "Using AI as a tool, not a brain replacement",
+      "Positioning professionals as the heroes of their own story",
+      "Strategic thinking before tactical execution",
+      "Building movements, not just serving transactions",
+      "Authentic expertise over false credibility"
+    ],
+    "what_you_stand_against": [
+      "Making people feel stupid about technology",
+      "Promising unrealistic results",
+      "Avoiding tough questions",
+      "Educational jargon and corporate speak",
+      "Overselling AI hype",
+      "One-size-fits-all solutions",
+      "Keeping people dependent on external help"
+    ]
+  },
+  "core_values": {
+    "value_1": "Empowerment - Helping professionals feel capable, confident, and in control",
+    "value_2": "Clarity - Demystifying complexity (technology, strategy, positioning)",
+    "value_3": "Honesty - Being real about challenges and opportunities",
+    "value_4": "Strategic Guidance - Helping people think strategically, not just act tactically",
+    "value_5": "AI Empowerment - Using technology to amplify human expertise, never replace it"
+  },
+  "storytelling": {
+    "preferred_narrative_style": "Hook-first storytelling with strategic moments woven throughout—sometimes jumping between moments and tying together lessons",
+    "story_types": [
+      "Business owner transformations—from uncertain decisions to confident strategy",
+      "Student/career changer breakthroughs—from overwhelmed to job-ready and confident",
+      "Teacher transformations—from isolated to innovative",
+      "Personal failures and lessons learned—universal across all audiences",
+      "Strategic thinking moments—where someone shifted HOW they think, not just what they do"
+    ],
+    "common_metaphors": [
+      "AI as a digital sidekick",
+      "Training wheels for basic AI features",
+      "Teaching assistant analogy",
+      "Swiss Army knife approach",
+      "Adult LEGOs for ideas",
+      "You as the hero, AI as your amplifier"
+    ],
+    "hero_journey_positioning": "Professionals (business owners, educators, students) as the heroes of their own story. AI and strategy as their tools/guides. You as the strategic guide who helps them succeed",
+    "storytelling_hook": "Shifted from 'Here's what educators need to know...' to 'Here's what professionals need to understand...'"
+  },
+  "language_patterns": {
+    "signature_phrases": [
+      "The question isn't can you, it's how will you...",
+      "If I can figure this out, anyone can...",
+      "Don't use AI as your brain, use it as a tool!",
+      "You're already the expert—let me show you how to be seen as one",
+      "Strategic thinking first, then tactical execution",
+      "Your expertise is your superpower—AI is just the amplifier",
+      "From uncertain to unstoppable",
+      "Let's transform how you think about this..."
+    ],
+    "words_to_avoid": [
+      "Most educational jargon and corporate speak",
+      "Pedagogical frameworks",
+      "Synergy",
+      "Leverage (as verb)",
+      "Paradigm shift",
+      "Utilize (instead of use)",
+      "Overselling language"
+    ],
+    "preferred_terminology": [
+      "Casual, relatable language when speaking",
+      "Professional-specific references (decision paralysis, business plateaus, career transitions)",
+      "Simple tech explanations",
+      "Professional but accessible language in documents",
+      "Action-oriented language"
+    ],
+    "punctuation_style": "Heavy on exclamation points for emphasis, straightforward with periods, commas and no em-dashes"
+  },
+  "audience_connection": {
+    "primary_audiences": [
+      "Business owners and entrepreneurs",
+      "Students and career changers (17-24+)",
+      "Educators (K-12 and higher ed)",
+      "School administrators and leaders"
+    ],
+    "how_you_relate": "Direct address that speaks to the expert within them—whether they're a business owner making strategy decisions, a student starting their career, or an educator innovating in their classroom. Conversational but authoritative. Seeks audience feedback and co-creates solutions through the Teach-Build methodology",
+    "empathy_focus": "Understanding that all professionals are capable but often overwhelmed or uncertain. Meeting them where they are—from complete beginners to advanced practitioners—with the same respect and practical guidance",
+    "credibility_building": "Primarily through personal experience across multiple disciplines (WordPress, content, strategy, AI), supplemented by data and research when situation calls for it. Real-world examples and case studies",
+    "vulnerability_level": "Very open about struggles and failures, balanced with maintaining authority when needed. Sharing learnings that apply across all audiences",
+    "transformation_promise": "Professionals will feel inspired, understood, challenged, empowered, and equipped with both the strategic thinking AND practical skills to amplify their expertise using technology—positioned as the hero of their own story. Equipped to work independently and keep growing, not dependent on external help"
+  },
+  "brand_authenticity": "Being 'on brand' means being authentic—consistent in energy, humor, honesty, relatability, and strategic thinking while evolving and growing. Your voice works across business owners, students, and educators because it's rooted in movement-building and authentic expertise amplification."
+}

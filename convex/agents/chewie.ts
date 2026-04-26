@@ -443,10 +443,10 @@ export const run = internalAction({
       }
 
       const validatorInput: ChewieOutputForValidation = {
-        businessTs: rawOutput.businessTs,
-        serviceAreasTs: rawOutput.serviceAreasTs,
-        serviceTypesTs: rawOutput.serviceTypesTs,
-        seoContentTs: rawOutput.seoContentTs,
+        businessTs: rawOutput.businessTs ?? "",
+        serviceAreasTs: rawOutput.serviceAreasTs ?? "",
+        serviceTypesTs: rawOutput.serviceTypesTs ?? "",
+        seoContentTs: rawOutput.seoContentTs ?? "",
       };
       const validation = validateChewieOutput(validatorInput);
       if (!validation.ok) {

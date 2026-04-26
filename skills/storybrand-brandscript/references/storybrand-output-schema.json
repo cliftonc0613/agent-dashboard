@@ -1,0 +1,249 @@
+{
+  "_instructions": "StoryBrand BrandScript output schema. Contains both raw user answers and generated copy for homepage wireframe components.",
+  "_metadata": {
+    "created_date": "",
+    "updated_date": "",
+    "framework": "StoryBrand 7-Part Framework",
+    "version": "1.0.0"
+  },
+  "answers": {
+    "hero": {
+      "customer_type": "",
+      "customer_description": "",
+      "external_desire": "",
+      "transformation_before": "",
+      "transformation_after": "",
+      "other_decision_makers": "",
+      "potential_objections": []
+    },
+    "problem": {
+      "external": "",
+      "internal": [],
+      "philosophical": "",
+      "villain": ""
+    },
+    "guide": {
+      "empathy_statement": "",
+      "authority_statement": "",
+      "years_experience": "",
+      "clients_served": "",
+      "success_rate": "",
+      "other_stats": ""
+    },
+    "plan": {
+      "step_1": {
+        "title": "",
+        "description": ""
+      },
+      "step_2": {
+        "title": "",
+        "description": ""
+      },
+      "step_3": {
+        "title": "",
+        "description": ""
+      },
+      "agreement_plan": []
+    },
+    "call_to_action": {
+      "primary_cta": {
+        "text": "",
+        "href": "/contact"
+      },
+      "transitional_cta": {
+        "text": "",
+        "offer_description": ""
+      },
+      "phone": "",
+      "email": ""
+    },
+    "success": {
+      "transformation_statement": "",
+      "benefits": [
+        "",
+        "",
+        ""
+      ]
+    },
+    "failure": {
+      "stakes": [
+        "",
+        "",
+        ""
+      ]
+    }
+  },
+  "generated_copy": {
+    "hero_section": {
+      "headline": "",
+      "subheadline": "",
+      "trust_badge": ""
+    },
+    "problem_section": {
+      "heading": "Sound Familiar?",
+      "subheading": "",
+      "empathy_statement": "",
+      "problems": [
+        {
+          "type": "external",
+          "title": "",
+          "description": ""
+        },
+        {
+          "type": "internal",
+          "title": "",
+          "description": ""
+        },
+        {
+          "type": "philosophical",
+          "title": "",
+          "description": ""
+        }
+      ]
+    },
+    "value_stack": {
+      "heading": "What You Get",
+      "subheading": "",
+      "values": [
+        {
+          "title": "",
+          "description": ""
+        },
+        {
+          "title": "",
+          "description": ""
+        },
+        {
+          "title": "",
+          "description": ""
+        }
+      ]
+    },
+    "guide_section": {
+      "eyebrow": "Meet Your Guide",
+      "empathy_statement": "",
+      "authority_statement": "",
+      "authority_markers": [
+        {
+          "stat": "",
+          "label": "Years Experience"
+        },
+        {
+          "stat": "",
+          "label": "Happy Clients"
+        },
+        {
+          "stat": "",
+          "label": "Success Rate"
+        }
+      ]
+    },
+    "plan_section": {
+      "heading": "How It Works",
+      "subheading": "",
+      "steps": [
+        {
+          "number": 1,
+          "title": "",
+          "description": ""
+        },
+        {
+          "number": 2,
+          "title": "",
+          "description": ""
+        },
+        {
+          "number": 3,
+          "title": "",
+          "description": ""
+        }
+      ],
+      "cta_text": "",
+      "cta_href": "/contact"
+    },
+    "explanatory_paragraph": {
+      "problem": "",
+      "solution": "",
+      "success": ""
+    },
+    "lead_capture": {
+      "heading": "Not Ready to Commit?",
+      "subheading": "",
+      "offer_title": "",
+      "offer_description": "",
+      "benefits": [
+        "",
+        "",
+        ""
+      ],
+      "button_text": ""
+    },
+    "stakes_section": {
+      "heading": "What Happens If You Wait?",
+      "subheading": "",
+      "stakes": [
+        {
+          "title": "",
+          "description": ""
+        },
+        {
+          "title": "",
+          "description": ""
+        },
+        {
+          "title": "",
+          "description": ""
+        }
+      ],
+      "cta_text": "",
+      "cta_href": "/contact",
+      "positive_contrast": ""
+    },
+    "social_proof": {
+      "heading": "Trusted by Businesses Like Yours",
+      "subheading": "",
+      "stats": [
+        {
+          "value": "",
+          "label": "Happy Clients"
+        },
+        {
+          "value": "",
+          "label": "Success Rate"
+        },
+        {
+          "value": "",
+          "label": "Projects Completed"
+        }
+      ]
+    },
+    "final_cta": {
+      "heading": "",
+      "subheading": "",
+      "primary_cta": {
+        "text": "",
+        "href": "/contact"
+      },
+      "secondary_cta": {
+        "text": "",
+        "href": "/contact"
+      },
+      "phone": "",
+      "email": "",
+      "trust_statement": ""
+    },
+    "agreement_section": {
+      "heading": "Our Promise to You",
+      "statement": "",
+      "agreements": []
+    },
+    "villain_statement": "",
+    "elevator_pitch": {
+      "long": "",
+      "condensed": "",
+      "headline": "",
+      "tagline": ""
+    },
+    "one_liner": ""
+  }
+}

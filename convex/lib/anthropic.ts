@@ -37,7 +37,7 @@ import { calculateCost } from "./cost";
 // --- Constants (locked) -----------------------------------------------------
 
 const MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS_PER_TURN = 4096;
+const MAX_TOKENS_PER_TURN = 8192; // bumped from 4096 — Chewie's 4 data files exceed 4k tokens
 const RETRY_DELAYS_MS = [1000, 2000, 4000];
 const JITTER_MAX_MS = 500;
 const RETRYABLE_STATUSES = new Set([408, 409, 425, 429, 500, 502, 503, 504, 529]);
