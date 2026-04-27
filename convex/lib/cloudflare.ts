@@ -255,6 +255,21 @@ export async function pollDeploymentReady(
         headers: authHeaders(params.cfApiToken),
       },
     });
+    if (resp.status === 404) {
+      // CF API is eventually consistent — project may not be visible on all
+      // edge nodes immediately after creation. Treat 404 as "not ready yet"
+      // for the first 5 attempts, then throw.
+      if (attempt < 5) {
+        await new Promise((r) => setTimeout(r, intervalMs));
+        continue;
+      }
+      const bodyText = await resp.text();
+      throw new CloudflareApiError(
+        resp.status,
+        bodyText,
+        `pollDeploymentReady ${resp.status}: ${bodyText.slice(0, 200)}`,
+      );
+    }
     if (resp.status !== 200) {
       const bodyText = await resp.text();
       throw new CloudflareApiError(

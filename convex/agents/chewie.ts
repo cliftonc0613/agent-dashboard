@@ -640,9 +640,6 @@ export const run = internalAction({
           step: "projectCreated",
           extra: { cfProjectName, pagesDevUrl },
         });
-        // CF does not auto-deploy from existing commits on first project
-        // connection via API — trigger the initial build explicitly.
-        await triggerDeployment({ cfAccountId, cfApiToken, projectName: cfProjectName });
       }
 
       // ---------------------------------------------------------------------
@@ -679,6 +676,9 @@ export const run = internalAction({
 
       if (!prospectAfterStep4.buildSteps.deployed) {
         try {
+          // Trigger deployment every time deployed=false — handles both fresh
+          // runs and crash-resume (CF won't auto-deploy on existing commits).
+          await triggerDeployment({ cfAccountId, cfApiToken, projectName: cfProjectName });
           const deployment = await pollDeploymentReady({
             cfAccountId,
             cfApiToken,
