@@ -1,4 +1,4 @@
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const get = internalQuery({
@@ -121,5 +121,12 @@ export const markBuildStep = internalMutation({
       }
     }
     await ctx.db.patch(id, patch);
+  },
+});
+
+export const getById = query({
+  args: { id: v.id("prospects") },
+  handler: async (ctx, { id }) => {
+    return await ctx.db.get(id);
   },
 });
