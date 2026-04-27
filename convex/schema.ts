@@ -110,10 +110,10 @@ export default defineSchema({
       deployed: v.boolean(),
       certReady: v.boolean(),
       verified: v.boolean(),
-      // Phase 5.5 (Luke) — temporary v.optional during migration, tightened after backfill:
-      dnsCreated: v.optional(v.boolean()),
-      imagesSourced: v.optional(v.boolean()),
-      designApplied: v.optional(v.boolean()),
+      // Phase 5.5 (Luke) — required after one-shot backfill via migrations/lukeBuildStepsBackfill.
+      dnsCreated: v.boolean(),
+      imagesSourced: v.boolean(),
+      designApplied: v.boolean(),
     }),
   })
     .index("by_status", ["status"])

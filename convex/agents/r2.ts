@@ -261,6 +261,9 @@ export const run = internalAction({
                   deployed: false,
                   certReady: false,
                   verified: false,
+                  dnsCreated: false,
+                  imagesSourced: false,
+                  designApplied: false,
                 },
               },
             );
