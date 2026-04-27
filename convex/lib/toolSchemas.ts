@@ -580,3 +580,124 @@ export const lukeDesignSchema = {
     ],
   },
 } as const;
+
+// --- Luke stage schemas (Phase 5.5 multi-stage design pipeline) --------------
+
+export const stageTasteDesignSchema = {
+  name: "stage_taste_design",
+  description: "Stage 1 — taste-design: establish atmosphere, emotional core, and industry clichés to avoid",
+  input_schema: {
+    type: "object",
+    properties: {
+      atmosphereSentence: {
+        type: "string",
+        description: "ONE concrete sensory sentence. No abstractions. Forbidden: 'modern and clean', 'professional and trustworthy'.",
+      },
+      emotionalCore: {
+        type: "string",
+        description: "ONE word capturing the feeling this site must produce on first glance",
+      },
+      clichesToAvoid: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 2,
+        maxItems: 3,
+        description: "2-3 specific design clichés dominant in this industry that will NOT be done",
+      },
+    },
+    required: ["atmosphereSentence", "emotionalCore", "clichesToAvoid"],
+  },
+} as const;
+
+export const stageColorizeSchema = {
+  name: "stage_colorize",
+  description: "Stage 2 — colorize: 11-stop brand color scale anchored on the emotional core",
+  input_schema: {
+    type: "object",
+    properties: {
+      brand50:  { type: "string", pattern: "^#[0-9A-Fa-f]{6}$", description: "Near-white ~95% lightness, tinted toward brand hue" },
+      brand100: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+      brand200: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+      brand300: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+      brand400: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+      brand500: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$", description: "Primary action color — deliberate, confident, chosen for THIS business" },
+      brand600: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+      brand700: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+      brand800: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+      brand900: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+      brand950: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$", description: "Near-black ~8% lightness, tinted toward brand hue" },
+      colorRationale: {
+        type: "string",
+        description: "Why THESE colors for THIS business — hue, emotional core connection, clichés avoided",
+      },
+    },
+    required: [
+      "brand50","brand100","brand200","brand300","brand400",
+      "brand500","brand600","brand700","brand800","brand900","brand950",
+      "colorRationale",
+    ],
+  },
+} as const;
+
+export const stageTypesetSchema = {
+  name: "stage_typeset",
+  description: "Stage 3 — typeset: font pairing with genuine contrast in mood",
+  input_schema: {
+    type: "object",
+    properties: {
+      display: {
+        type: "string",
+        description: "Exact Google Fonts name for headings. FORBIDDEN: Inter, Roboto, Open Sans, Montserrat, Poppins, Lato, Raleway, Nunito, Source Sans Pro.",
+      },
+      body: {
+        type: "string",
+        description: "Exact Google Fonts name for body text. Must contrast in mood with display. Same forbidden list applies.",
+      },
+      fontRationale: {
+        type: "string",
+        description: "Why this pairing — contrast in mood, how it serves the emotional core",
+      },
+    },
+    required: ["display", "body", "fontRationale"],
+  },
+} as const;
+
+export const stageBolderSchema = {
+  name: "stage_bolder",
+  description: "Stage 4 — bolder + polish: design principles, art-directed image queries, DESIGN.md body",
+  input_schema: {
+    type: "object",
+    properties: {
+      designPrinciples: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 3,
+        maxItems: 5,
+        description: "3-5 principles SPECIFIC to this business. FORBIDDEN: generic advice like 'use consistent spacing'.",
+      },
+      imageQueries: {
+        type: "object",
+        properties: {
+          hero: {
+            type: "string",
+            description: "Art-directed hero query: composition + lighting + mood + foreground subject. FORBIDDEN: vague genre searches.",
+          },
+          supporting: {
+            type: "array",
+            items: { type: "string" },
+            minItems: 2,
+            maxItems: 2,
+            description: "Two equally art-directed supporting queries",
+          },
+        },
+        required: ["hero", "supporting"],
+      },
+      designMdBody: {
+        type: "string",
+        maxLength: 2000,
+        description: "Rationale: why these colors, why these fonts, which 2-3 clichés were avoided and what was done instead",
+      },
+    },
+    required: ["designPrinciples", "imageQueries", "designMdBody"],
+  },
+} as const;

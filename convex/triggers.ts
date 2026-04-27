@@ -67,6 +67,26 @@ export const triggerChewie = mutation({
   },
 });
 
+export const resetLuke = mutation({
+  args: { prospectId: v.id("prospects") },
+  handler: async (ctx, args) => {
+    const prospect = await ctx.db.get(args.prospectId);
+    if (!prospect) throw new Error(`Prospect ${args.prospectId} not found`);
+    await ctx.db.patch(args.prospectId, {
+      buildSteps: {
+        ...prospect.buildSteps,
+        dnsCreated: false,
+        imagesSourced: false,
+        designApplied: false,
+      },
+      lukeOutput: undefined,
+      lukeFailedReason: undefined,
+      dnsWarn: false,
+    });
+    return { reset: true };
+  },
+});
+
 export const triggerLuke = mutation({
   args: {
     prospectId: v.id("prospects"),

@@ -35,8 +35,18 @@ import {
   type SearchedImage,
 } from "../lib/images";
 import { commitTree } from "../lib/githubTree";
-import { lukeDesignSchema } from "../lib/toolSchemas";
-import { LUKE_SYSTEM_PROMPT } from "../lib/lukeDesignPrompt";
+import {
+  stageTasteDesignSchema,
+  stageColorizeSchema,
+  stageTypesetSchema,
+  stageBolderSchema,
+} from "../lib/toolSchemas";
+import {
+  LUKE_PROMPT_TASTE,
+  LUKE_PROMPT_COLORIZE,
+  LUKE_PROMPT_TYPESET,
+  LUKE_PROMPT_BOLDER,
+} from "../lib/lukeDesignPrompt";
 import { callAgent, CostCeilingError } from "../lib/anthropic";
 import {
   generateGlobalCss,
@@ -396,7 +406,7 @@ export const run = internalAction({
       // STEP 3 — designApplied (Claude call + atomic Trees commit)
       // ---------------------------------------------------------------------
       if (!prospect.buildSteps.designApplied) {
-        const userPrompt = composeLukeUserPrompt({
+        const businessContext = composeLukeUserPrompt({
           businessName: prospect.businessName,
           industry: prospect.industry,
           market: prospect.market,
@@ -407,24 +417,124 @@ export const run = internalAction({
             | null,
         });
 
-        const claudeResult = await callAgent({
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+        let totalCostUsd = 0;
+
+        // --- Stage 1: taste-design -------------------------------------------
+        const tasteResult = await callAgent({
           ctx,
           agentName: "luke",
-          system: LUKE_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: userPrompt }],
+          system: LUKE_PROMPT_TASTE,
+          messages: [{ role: "user", content: businessContext }],
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          tools: [lukeDesignSchema as any],
-          toolChoice: { type: "tool", name: lukeDesignSchema.name },
+          tools: [stageTasteDesignSchema as any],
+          toolChoice: { type: "tool", name: stageTasteDesignSchema.name },
           runId: args.runId,
           prospectId: args.prospectId,
         });
+        const taste = tasteResult.toolUseResults[0]?.input as {
+          atmosphereSentence: string;
+          emotionalCore: string;
+          clichesToAvoid: string[];
+        } | undefined;
+        if (!taste) throw new Error("Luke: stage_taste_design returned no output");
+        totalInputTokens += tasteResult.inputTokens;
+        totalOutputTokens += tasteResult.outputTokens;
+        totalCostUsd += tasteResult.costUsd;
 
-        const design = claudeResult.toolUseResults[0]?.input as
-          | LukeDesignToolInput
-          | undefined;
-        if (!design) {
-          throw new Error("Luke: no tool_use in Claude response");
-        }
+        // --- Stage 2: colorize -----------------------------------------------
+        const colorizeContext = `${businessContext}\n\n## Stage 1 — Taste-Design Output\nAtmosphere: ${taste.atmosphereSentence}\nEmotional core: ${taste.emotionalCore}\nClichés to avoid: ${taste.clichesToAvoid.join(", ")}`;
+        const colorizeResult = await callAgent({
+          ctx,
+          agentName: "luke",
+          system: LUKE_PROMPT_COLORIZE,
+          messages: [{ role: "user", content: colorizeContext }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tools: [stageColorizeSchema as any],
+          toolChoice: { type: "tool", name: stageColorizeSchema.name },
+          runId: args.runId,
+          prospectId: args.prospectId,
+        });
+        const colorOutput = colorizeResult.toolUseResults[0]?.input as Record<string, string> | undefined;
+        if (!colorOutput) throw new Error("Luke: stage_colorize returned no output");
+        totalInputTokens += colorizeResult.inputTokens;
+        totalOutputTokens += colorizeResult.outputTokens;
+        totalCostUsd += colorizeResult.costUsd;
+
+        // --- Stage 3: typeset ------------------------------------------------
+        const typesetContext = `${businessContext}\n\n## Stage 1 — Taste-Design\nAtmosphere: ${taste.atmosphereSentence}\nEmotional core: ${taste.emotionalCore}\n\n## Stage 2 — Color Scale\nbrand500: ${colorOutput.brand500}\nRationale: ${colorOutput.colorRationale}`;
+        const typesetResult = await callAgent({
+          ctx,
+          agentName: "luke",
+          system: LUKE_PROMPT_TYPESET,
+          messages: [{ role: "user", content: typesetContext }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tools: [stageTypesetSchema as any],
+          toolChoice: { type: "tool", name: stageTypesetSchema.name },
+          runId: args.runId,
+          prospectId: args.prospectId,
+        });
+        const fontOutput = typesetResult.toolUseResults[0]?.input as {
+          display: string;
+          body: string;
+          fontRationale: string;
+        } | undefined;
+        if (!fontOutput) throw new Error("Luke: stage_typeset returned no output");
+        totalInputTokens += typesetResult.inputTokens;
+        totalOutputTokens += typesetResult.outputTokens;
+        totalCostUsd += typesetResult.costUsd;
+
+        // --- Stage 4: bolder + polish ----------------------------------------
+        const bolderContext = `${businessContext}\n\n## Stage 1 — Taste-Design\nAtmosphere: ${taste.atmosphereSentence}\nEmotional core: ${taste.emotionalCore}\nClichés to avoid: ${taste.clichesToAvoid.join(", ")}\n\n## Stage 2 — Color Scale\nbrand500: ${colorOutput.brand500}\nRationale: ${colorOutput.colorRationale}\n\n## Stage 3 — Typography\nDisplay: ${fontOutput.display}\nBody: ${fontOutput.body}\nRationale: ${fontOutput.fontRationale}`;
+        const bolderResult = await callAgent({
+          ctx,
+          agentName: "luke",
+          system: LUKE_PROMPT_BOLDER,
+          messages: [{ role: "user", content: bolderContext }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tools: [stageBolderSchema as any],
+          toolChoice: { type: "tool", name: stageBolderSchema.name },
+          runId: args.runId,
+          prospectId: args.prospectId,
+        });
+        const bolderOutput = bolderResult.toolUseResults[0]?.input as {
+          designPrinciples: string[];
+          imageQueries: { hero: string; supporting: string[] };
+          designMdBody: string;
+        } | undefined;
+        if (!bolderOutput) throw new Error("Luke: stage_bolder returned no output");
+        totalInputTokens += bolderResult.inputTokens;
+        totalOutputTokens += bolderResult.outputTokens;
+        totalCostUsd += bolderResult.costUsd;
+
+        // --- Assemble final design from all 4 stages -------------------------
+        const design: LukeDesignToolInput = {
+          brandColorScale: {
+            brand50: colorOutput.brand50,
+            brand100: colorOutput.brand100,
+            brand200: colorOutput.brand200,
+            brand300: colorOutput.brand300,
+            brand400: colorOutput.brand400,
+            brand500: colorOutput.brand500,
+            brand600: colorOutput.brand600,
+            brand700: colorOutput.brand700,
+            brand800: colorOutput.brand800,
+            brand900: colorOutput.brand900,
+            brand950: colorOutput.brand950,
+          } as BrandColorScale,
+          fonts: { display: fontOutput.display, body: fontOutput.body },
+          atmosphere: taste.atmosphereSentence,
+          designPrinciples: bolderOutput.designPrinciples,
+          imageQueries: bolderOutput.imageQueries,
+          designMdBody: bolderOutput.designMdBody,
+        };
+
+        const claudeResult = {
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          costUsd: totalCostUsd,
+        };
 
         let brandColorScale: BrandColorScale;
         if (isValidBrandColorScale(design.brandColorScale)) {
