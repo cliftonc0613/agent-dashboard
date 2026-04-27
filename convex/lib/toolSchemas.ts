@@ -485,3 +485,98 @@ export const chewieDataFilesSchema = {
     ],
   },
 } as const;
+
+export const lukeDesignSchema = {
+  name: "submit_design_pass",
+  description:
+    "Submit Luke's complete design pass output for a prospect site",
+  input_schema: {
+    type: "object",
+    properties: {
+      brandColorScale: {
+        type: "object",
+        description:
+          "11-stop brand color ramp from brand50 (lightest) to brand950 (darkest)",
+        properties: {
+          brand50: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand100: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand200: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand300: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand400: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand500: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand600: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand700: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand800: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand900: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+          brand950: { type: "string", pattern: "^#[0-9A-Fa-f]{6}$" },
+        },
+        required: [
+          "brand50",
+          "brand100",
+          "brand200",
+          "brand300",
+          "brand400",
+          "brand500",
+          "brand600",
+          "brand700",
+          "brand800",
+          "brand900",
+          "brand950",
+        ],
+      },
+      fonts: {
+        type: "object",
+        properties: {
+          display: {
+            type: "string",
+            description: "Google Font name for headings",
+          },
+          body: {
+            type: "string",
+            description: "Google Font name for body text",
+          },
+        },
+        required: ["display", "body"],
+      },
+      atmosphere: {
+        type: "string",
+        description:
+          "One-paragraph atmosphere description for this specific business",
+      },
+      designPrinciples: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 3,
+        maxItems: 5,
+        description: "3-5 concrete design principles that guided choices",
+      },
+      imageQueries: {
+        type: "object",
+        properties: {
+          hero: { type: "string" },
+          supporting: {
+            type: "array",
+            items: { type: "string" },
+            minItems: 2,
+            maxItems: 2,
+          },
+        },
+        required: ["hero", "supporting"],
+      },
+      designMdBody: {
+        type: "string",
+        maxLength: 2000,
+        description:
+          "Full DESIGN.md body content (atmosphere, palette rationale, fonts, image direction, principles)",
+      },
+    },
+    required: [
+      "brandColorScale",
+      "fonts",
+      "atmosphere",
+      "designPrinciples",
+      "imageQueries",
+      "designMdBody",
+    ],
+  },
+} as const;
