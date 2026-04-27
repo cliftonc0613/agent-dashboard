@@ -662,6 +662,21 @@ export const stageTypesetSchema = {
   },
 } as const;
 
+export const stageCssSchema = {
+  name: "stage_write_css",
+  description: "Stage 5 — write the complete production global.css file with real component styles, typography scale, and interaction states",
+  input_schema: {
+    type: "object",
+    properties: {
+      css: {
+        type: "string",
+        description: "The complete global.css file content. Must be valid Tailwind v4 CSS using @theme, @utility, @layer components. Must include brand colors, typography scale, component styles, hover states, and transitions.",
+      },
+    },
+    required: ["css"],
+  },
+} as const;
+
 export const stageBolderSchema = {
   name: "stage_bolder",
   description: "Stage 4 — bolder + polish: design principles, art-directed image queries, DESIGN.md body",

@@ -92,3 +92,75 @@ Explain the full rationale:
 - What the atmosphere unlocks for anyone applying the tokens
 
 Call stage_bolder with your output.`;
+
+export const LUKE_PROMPT_CSS = `${BASE}
+
+## impeccable:colorize + impeccable:typeset + impeccable:bolder + impeccable:polish
+You have the full design direction from all four previous stages. Now write the complete global.css file.
+
+This is real code. Not a template. Not variables to swap. ACTUAL CSS that a skilled designer would write.
+
+## Tailwind v4 syntax rules (non-negotiable)
+- @theme block: CSS custom properties only (--font-display, --font-body, --color-brand-*, --color-stone-*, --color-amber-*, --animate-*)
+- @utility blocks: single declarations only, NO pseudo-selectors inside @utility
+- @layer components: ALL pseudo-selectors (:hover, ::before, :focus, :active), complex multi-property rules
+- @keyframes: at root level, outside @theme
+- Start with: @import "tailwindcss"; and @plugin "@tailwindcss/typography";
+
+## What you MUST write
+
+### @theme block
+- --font-display and --font-body from stage_typeset (exact Google Font names)
+- All 11 --color-brand-* stops from stage_colorize
+- Stone neutrals TINTED toward the brand hue (not pure gray — mix a hint of brand into every stone stop)
+- Amber accent palette (keep functional, adjust warm/cool to match atmosphere)
+- Animation custom properties
+
+### Typography scale (in @layer components on body/html)
+- Fluid type scale using clamp() for headings — minimum mobile size → maximum desktop size
+- h1: clamp(2rem, 5vw, 3.5rem), line-height 1.1, letter-spacing tight
+- h2: clamp(1.5rem, 3.5vw, 2.5rem), line-height 1.2
+- h3: clamp(1.25rem, 2.5vw, 1.875rem), line-height 1.3
+- body: 1rem min, 1.6-1.7 line-height
+- Apply font-display to all headings, font-body to body
+
+### Button styles (in @layer components)
+Write .btn-primary and .btn-secondary with:
+- Default, :hover (transform + color shift), :focus (visible ring), :active (slight press)
+- Transitions: 200ms ease-out for color, 150ms ease-out for transform
+- NO rounded-full (pill buttons look cheap for trade businesses)
+- Padding generous enough to breathe
+
+### Card and surface styles (in @layer components)
+- .card: background, border, subtle shadow — NO generic box-shadow rounded rectangle
+- .card:hover: lift effect using transform translateY(-3px), transition 250ms ease-out
+- Surface treatments that reflect the atmosphere (e.g., copper-tinted border for plumber, etc.)
+
+### Header/nav styles (in @layer components)
+- .site-header: background, border-bottom or shadow appropriate to the atmosphere
+- Transition when scrolled (use .scrolled class applied by JS)
+
+### Section styles (in @layer components)
+- .section-hero: appropriate background treatment — NOT a gradient on text
+- .section-dark: a genuinely dark section using brand-900/950, NOT pure black
+- .section-accent: a colored section using brand-50/100 with brand-tinted text
+
+### Interaction polish (in @layer components)
+- Focus-visible rings on all interactive elements (2px offset, brand-500 color)
+- Link styles with underline-offset and color transitions
+- Input/form field styles if relevant to the business
+
+## FORBIDDEN (automatic failure)
+- Glassmorphism (backdrop-filter: blur on decorative elements)
+- Gradient text (background-clip: text)
+- Purple-to-blue gradients
+- Neon or glow effects
+- Pure #000000 or #ffffff backgrounds
+- Generic .shadow-lg drop shadows on rounded rectangles as the primary card treatment
+- Bounce or elastic easing (use ease-out-quart equivalent: cubic-bezier(0.25, 1, 0.5, 1))
+
+## The test
+Read your output and ask: "Would a real CSS developer who just read the design brief write this?" If it looks like a variable swap with a few extra rules, start over. If it looks like intentional, atmosphere-driven design decisions in code, you are done.
+
+Call stage_write_css with the complete css string.`;
+

@@ -40,12 +40,14 @@ import {
   stageColorizeSchema,
   stageTypesetSchema,
   stageBolderSchema,
+  stageCssSchema,
 } from "../lib/toolSchemas";
 import {
   LUKE_PROMPT_TASTE,
   LUKE_PROMPT_COLORIZE,
   LUKE_PROMPT_TYPESET,
   LUKE_PROMPT_BOLDER,
+  LUKE_PROMPT_CSS,
 } from "../lib/lukeDesignPrompt";
 import { callAgent, CostCeilingError } from "../lib/anthropic";
 import {
@@ -508,7 +510,26 @@ export const run = internalAction({
         totalOutputTokens += bolderResult.outputTokens;
         totalCostUsd += bolderResult.costUsd;
 
-        // --- Assemble final design from all 4 stages -------------------------
+        // --- Stage 5: write_css ----------------------------------------------
+        const cssContext = `${businessContext}\n\n## Stage 1 — Taste-Design\nAtmosphere: ${taste.atmosphereSentence}\nEmotional core: ${taste.emotionalCore}\nClichés to avoid: ${taste.clichesToAvoid.join(", ")}\n\n## Stage 2 — Color Scale\n${BRAND_KEYS.map((k) => `${k}: ${colorOutput[k]}`).join("\n")}\nRationale: ${colorOutput.colorRationale}\n\n## Stage 3 — Typography\nDisplay: ${fontOutput.display}\nBody: ${fontOutput.body}\nRationale: ${fontOutput.fontRationale}\n\n## Stage 4 — Design Direction\nPrinciples:\n${bolderOutput.designPrinciples.map((p) => `- ${p}`).join("\n")}\n\nDESIGN.md:\n${bolderOutput.designMdBody}`;
+        const cssResult = await callAgent({
+          ctx,
+          agentName: "luke",
+          system: LUKE_PROMPT_CSS,
+          messages: [{ role: "user", content: cssContext }],
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          tools: [stageCssSchema as any],
+          toolChoice: { type: "tool", name: stageCssSchema.name },
+          runId: args.runId,
+          prospectId: args.prospectId,
+        });
+        const cssOutput = cssResult.toolUseResults[0]?.input as { css: string } | undefined;
+        if (!cssOutput?.css) throw new Error("Luke: stage_write_css returned no CSS");
+        totalInputTokens += cssResult.inputTokens;
+        totalOutputTokens += cssResult.outputTokens;
+        totalCostUsd += cssResult.costUsd;
+
+        // --- Assemble final design from all 5 stages -------------------------
         const design: LukeDesignToolInput = {
           brandColorScale: {
             brand50: colorOutput.brand50,
@@ -552,10 +573,7 @@ export const run = internalAction({
           brandColorScale = deriveBrandColorScale(fallbackPrimary);
         }
 
-        const newGlobalCss = generateGlobalCss({
-          brandColorScale,
-          fonts: design.fonts,
-        });
+        const newGlobalCss = cssOutput.css;
 
         const lukeImages =
           ((prospect.lukeOutput as { images?: ProspectImageRecord[] } | null)
