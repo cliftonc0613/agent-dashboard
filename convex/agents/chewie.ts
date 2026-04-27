@@ -182,6 +182,8 @@ export interface Business {
   logo?: string;
   logoWhite?: string;
   ogImage?: string;
+  heroImage?: string;
+  aboutImage?: string;
 }
 
 // REQUIRED helper to preserve verbatim:
