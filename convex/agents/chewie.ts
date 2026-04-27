@@ -48,6 +48,7 @@ import {
 } from "../lib/github";
 import {
   createPagesProject,
+  triggerDeployment,
   attachCustomDomain,
   pollDeploymentReady,
   pollSslReady,
@@ -639,6 +640,9 @@ export const run = internalAction({
           step: "projectCreated",
           extra: { cfProjectName, pagesDevUrl },
         });
+        // CF does not auto-deploy from existing commits on first project
+        // connection via API — trigger the initial build explicitly.
+        await triggerDeployment({ cfAccountId, cfApiToken, projectName: cfProjectName });
       }
 
       // ---------------------------------------------------------------------

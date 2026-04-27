@@ -369,3 +369,49 @@ export async function pollSslReady(params: PollSslReadyParams): Promise<void> {
     `pollSslReady: ${params.domainName} not reachable with active cert after ${maxAttempts} attempts`,
   );
 }
+
+// ---------------------------------------------------------------------------
+// triggerDeployment (Step 3b)
+// ---------------------------------------------------------------------------
+
+export interface TriggerDeploymentParams {
+  cfAccountId: string;
+  cfApiToken: string;
+  projectName: string;
+}
+
+export interface TriggerDeploymentResult {
+  deploymentId: string;
+}
+
+/**
+ * POST /accounts/{cfAccountId}/pages/projects/{projectName}/deployments
+ * Explicitly kicks off the first build after project creation.
+ * CF does not auto-deploy from existing commits when a project is first
+ * connected via API — only new commits trigger webhook builds. This call
+ * bridges that gap so pollDeploymentReady has something to wait on.
+ */
+export async function triggerDeployment(
+  params: TriggerDeploymentParams,
+): Promise<TriggerDeploymentResult> {
+  const url = `https://api.cloudflare.com/client/v4/accounts/${params.cfAccountId}/pages/projects/${params.projectName}/deployments`;
+  const resp = await cloudflareFetch({
+    operation: `triggerDeployment ${params.projectName}`,
+    url,
+    init: {
+      method: "POST",
+      headers: authHeaders(params.cfApiToken),
+      body: JSON.stringify({}),
+    },
+  });
+  if (resp.status === 200 || resp.status === 201) {
+    const json = (await resp.json()) as { result: { id: string } };
+    return { deploymentId: json.result.id };
+  }
+  const bodyText = await resp.text();
+  throw new CloudflareApiError(
+    resp.status,
+    bodyText,
+    `triggerDeployment unexpected ${resp.status}: ${bodyText.slice(0, 200)}`,
+  );
+}
