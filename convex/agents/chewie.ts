@@ -732,6 +732,12 @@ export const run = internalAction({
         status: "site_built",
       });
 
+      // Phase 5.5: schedule Luke's visual design pass after site is live.
+      await ctx.scheduler.runAfter(0, internal.agents.luke.run, {
+        prospectId: args.prospectId,
+        runId: args.runId,
+      });
+
       await ctx.runMutation(internal.agentActions.complete, {
         id: actionId,
         status: "success",

@@ -66,3 +66,21 @@ export const triggerChewie = mutation({
     return { scheduled: true };
   },
 });
+
+export const triggerLuke = mutation({
+  args: {
+    prospectId: v.id("prospects"),
+    runId: v.optional(v.id("runs")),
+  },
+  handler: async (ctx, args) => {
+    const prospect = await ctx.db.get(args.prospectId);
+    if (!prospect) throw new Error(`Prospect ${args.prospectId} not found`);
+    if (prospect.status !== "site_built") {
+      throw new Error(
+        `Luke requires status=site_built, got: ${prospect.status}`,
+      );
+    }
+    await ctx.scheduler.runAfter(0, internal.agents.luke.run, args);
+    return { scheduled: true, prospectId: args.prospectId };
+  },
+});
