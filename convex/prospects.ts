@@ -73,6 +73,9 @@ export const patch = internalMutation({
     cfProjectName: v.optional(v.string()),
     pagesDevUrl: v.optional(v.string()),
     chewieNotes: v.optional(v.string()),
+    lukeOutput: v.optional(v.any()),
+    dnsWarn: v.optional(v.boolean()),
+    lukeFailedReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { id, ...patch } = args;
@@ -95,6 +98,9 @@ export const markBuildStep = internalMutation({
       v.literal("deployed"),
       v.literal("certReady"),
       v.literal("verified"),
+      v.literal("dnsCreated"),
+      v.literal("imagesSourced"),
+      v.literal("designApplied"),
     ),
     extra: v.optional(
       v.object({

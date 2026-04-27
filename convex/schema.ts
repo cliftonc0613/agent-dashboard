@@ -95,6 +95,13 @@ export default defineSchema({
     // Chewie's audit trail for inferences beyond literal prospect data
     chewieNotes: v.optional(v.string()),
 
+    // Phase 5.5 (Luke) — agent output + signal fields. lukeOutput shape owned by
+    // Luke's tool schema (lukeOutputSchema in toolSchemas.ts), validated at
+    // tool_use response time, not at the DB layer.
+    lukeOutput: v.optional(v.any()),
+    dnsWarn: v.optional(v.boolean()),
+    lukeFailedReason: v.optional(v.string()),
+
     buildSteps: v.object({
       repoCreated: v.boolean(),
       siteJsonPushed: v.boolean(),
@@ -103,6 +110,10 @@ export default defineSchema({
       deployed: v.boolean(),
       certReady: v.boolean(),
       verified: v.boolean(),
+      // Phase 5.5 (Luke) — temporary v.optional during migration, tightened after backfill:
+      dnsCreated: v.optional(v.boolean()),
+      imagesSourced: v.optional(v.boolean()),
+      designApplied: v.optional(v.boolean()),
     }),
   })
     .index("by_status", ["status"])
