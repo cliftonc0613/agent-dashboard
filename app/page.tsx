@@ -37,7 +37,7 @@ export default function Home() {
             Rebel Alliance &nbsp;//&nbsp; Command Center &nbsp;//&nbsp; Node 01
           </span>
           <span className="readout-label" style={{ color: "var(--rebel-faint)" }}>
-            v0.4.0 &middot; stateless agents
+            v0.5.0 &middot; chewie builder
           </span>
         </div>
 
@@ -113,7 +113,7 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Agents</span>
               <span className="readout-value">
-                R2 &middot; Leia &middot; Ahsoka &middot; Han
+                R2 &middot; Leia &middot; Chewie &middot; Ahsoka &middot; Han
               </span>
             </div>
 
@@ -144,7 +144,7 @@ export default function Home() {
             Acknowledge &nbsp;/&nbsp; Continue
           </Button>
           <span className="readout-label">
-            R2 &middot; Leia &middot; Ahsoka &middot; Han &middot; Phase 5 gate
+            R2 &middot; Leia &middot; Chewie &middot; Ahsoka &middot; Han
           </span>
         </div>
       </main>
