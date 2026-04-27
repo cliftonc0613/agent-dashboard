@@ -37,7 +37,7 @@ export default function Home() {
             Rebel Alliance &nbsp;//&nbsp; Command Center &nbsp;//&nbsp; Node 01
           </span>
           <span className="readout-label" style={{ color: "var(--rebel-faint)" }}>
-            v0.5.0 &middot; chewie builder
+            v0.5.5 &middot; luke design layer
           </span>
         </div>
 
@@ -91,13 +91,13 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Status</span>
               <span className="readout-value">
-                <span className="status-live">Stateless agents live</span>
+                <span className="status-live">Luke design layer live</span>
               </span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Phase</span>
-              <span className="readout-value">05 / 12</span>
+              <span className="readout-value">05.5 / 12</span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -113,7 +113,8 @@ export default function Home() {
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <span className="readout-label">Agents</span>
               <span className="readout-value">
-                R2 &middot; Leia &middot; Chewie &middot; Ahsoka &middot; Han
+                R2 &middot; Leia &middot; Chewie &middot;{" "}
+                <span style={{ color: "#c9a36a" }}>Luke</span> &middot; Ahsoka &middot; Han
               </span>
             </div>
 
@@ -144,7 +145,8 @@ export default function Home() {
             Acknowledge &nbsp;/&nbsp; Continue
           </Button>
           <span className="readout-label">
-            R2 &middot; Leia &middot; Chewie &middot; Ahsoka &middot; Han
+            R2 &middot; Leia &middot; Chewie &middot;{" "}
+            <span style={{ color: "#c9a36a" }}>Luke</span> &middot; Ahsoka &middot; Han
           </span>
         </div>
       </main>
