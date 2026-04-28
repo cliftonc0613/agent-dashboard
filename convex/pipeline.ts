@@ -1,7 +1,13 @@
 "use node";
 import { v } from "convex/values";
-import { action, internalAction, internalMutation } from "./_generated/server";
+import {
+  action,
+  internalAction,
+  internalMutation,
+} from "./_generated/server";
 import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import type { ActionCtx } from "./_generated/server";
 
 /**
  * Phase 6 — daily pipeline orchestrator.
@@ -179,6 +185,186 @@ export const scheduleNextChunk = internalMutation({
     }
     if (chunk.length === 0) {
       await ctx.scheduler.runAfter(0, internal.pipeline.finalizeRun, { runId });
+    }
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Internal helpers — quality gate + failure handling
+// ---------------------------------------------------------------------------
+
+async function applyQualityGate(
+  ctx: ActionCtx,
+  prospectId: Id<"prospects">,
+): Promise<{ queued: boolean; reason?: string }> {
+  // Read current prospect state — Ahsoka and Han have updated it.
+  const prospect = await ctx.runQuery(internal.prospects.get, {
+    id: prospectId,
+  });
+  if (!prospect) throw new Error(`Prospect ${prospectId} disappeared`);
+
+  // Hard reject: Ahsoka verdict.
+  if (prospect.ahsokaReview?.verdict === "rejected") {
+    await ctx.runMutation(internal.prospects.patch, {
+      id: prospectId,
+      status: "rejected",
+      rejectionReason: prospect.rejectionReason ?? "ahsoka_rejected",
+    });
+    return { queued: false, reason: "ahsoka_rejected" };
+  }
+
+  // Hard reject: Han humanScore < 7.
+  if (
+    typeof prospect.humanScore !== "number" ||
+    prospect.humanScore < 7
+  ) {
+    await ctx.runMutation(internal.prospects.patch, {
+      id: prospectId,
+      status: "rejected",
+      rejectionReason: `han_humanScore_low (${prospect.humanScore ?? "missing"})`,
+    });
+    return { queued: false, reason: "han_low_score" };
+  }
+
+  // Daily send-cap enforcement (independent of quality).
+  const todayCount = await ctx.runQuery(
+    internal.approvalQueue.countToday,
+    {},
+  );
+  const control = await ctx.runQuery(api.pipelineControl.get, {});
+  if (todayCount >= control.dailySendCap) {
+    await ctx.runMutation(internal.prospects.patch, {
+      id: prospectId,
+      status: "needs_manual_review",
+      rejectionReason: `daily_send_cap_reached (${todayCount}/${control.dailySendCap})`,
+    });
+    return { queued: false, reason: "send_cap" };
+  }
+
+  // Passes all gates — add to approval queue.
+  await ctx.runMutation(internal.approvalQueue.add, {
+    prospectId,
+    queuedAt: Date.now(),
+  });
+  await ctx.runMutation(internal.prospects.patch, {
+    id: prospectId,
+    status: "approved",
+  });
+  return { queued: true };
+}
+
+async function handleProspectFailure(
+  ctx: ActionCtx,
+  prospectId: Id<"prospects">,
+  runId: Id<"runs">,
+  err: unknown,
+): Promise<void> {
+  const message = err instanceof Error ? err.message : String(err);
+  const stack = err instanceof Error ? err.stack : undefined;
+
+  await ctx.runMutation(internal.errorLog.insert, {
+    prospectId,
+    runId,
+    agentName: "pipeline",
+    message,
+    stack,
+    severity: "error",
+    createdAt: Date.now(),
+  });
+
+  await ctx.runMutation(internal.runs.incrementErrorCount, { id: runId });
+
+  const result = await ctx.runMutation(internal.prospects.incrementRetry, {
+    id: prospectId,
+  });
+  if (result.markedFailed) {
+    await ctx.runAction(internal.lib.telegram.sendTelegram, {
+      character: "C-3PO",
+      level: "error",
+      title: "Prospect failed after 3 attempts",
+      body: `Prospect ${prospectId}: ${message}\n\nI'm terribly sorry, but this prospect has exceeded the retry limit.`,
+    });
+  }
+}
+
+// Per-prospect action — full agent chain with failure isolation.
+export const processProspect = internalAction({
+  args: {
+    runId: v.id("runs"),
+    prospectId: v.id("prospects"),
+    queue: v.array(v.id("prospects")),
+  },
+  handler: async (ctx, { runId, prospectId, queue }) => {
+    try {
+      // LAYER 2 OF 3: Per-prospect pause/cost guard (before any Claude call).
+      const ceiling = await ctx.runQuery(
+        internal.agentActions.getCeilingState,
+        { runId },
+      );
+      if (ceiling.paused) {
+        await ctx.runMutation(internal.prospects.patch, {
+          id: prospectId,
+          status: "failed",
+          rejectionReason: "pipeline_paused_during_run",
+        });
+        return;
+      }
+      if (ceiling.dailyCostSoFar >= ceiling.dailyCostCeilingUsd) {
+        await ctx.runMutation(internal.prospects.patch, {
+          id: prospectId,
+          status: "failed",
+          rejectionReason: "daily_cost_ceiling_breached",
+        });
+        return;
+      }
+
+      // Full agent chain — sequential awaits inside try block.
+      // Layer 3 of pause/cost guard lives inside callAgent (already implemented).
+      await ctx.runAction(internal.agents.leia.run, { prospectId, runId });
+      await ctx.runAction(internal.agents.chewie.run, { prospectId, runId });
+      await ctx.runAction(internal.agents.luke.run, { prospectId, runId });
+
+      // Ahsoka requires siteUrl — fetch from prospect (Chewie set it during deploy).
+      const prospect = await ctx.runQuery(internal.prospects.get, {
+        id: prospectId,
+      });
+      if (!prospect) throw new Error(`Prospect ${prospectId} disappeared`);
+      if (!prospect.siteUrl) {
+        throw new Error(
+          `Prospect ${prospectId} has no siteUrl after Chewie/Luke — cannot run Ahsoka`,
+        );
+      }
+      await ctx.runAction(internal.agents.ahsoka.run, {
+        prospectId,
+        runId,
+        siteUrl: prospect.siteUrl,
+      });
+      await ctx.runAction(internal.agents.han.run, { prospectId, runId });
+
+      // Quality gate — inserts into approvalQueue only if all criteria pass.
+      const gate = await applyQualityGate(ctx, prospectId);
+      if (gate.queued) {
+        await ctx.runMutation(internal.runs.incrementSitesBuilt, {
+          id: runId,
+        });
+      }
+    } catch (err) {
+      await handleProspectFailure(ctx, prospectId, runId, err);
+    } finally {
+      // ALWAYS schedule next — failure isolation (a failing prospect cannot block others).
+      if (queue.length > 0) {
+        const [nextProspectId, ...rest] = queue;
+        await ctx.scheduler.runAfter(0, internal.pipeline.processProspect, {
+          runId,
+          prospectId: nextProspectId,
+          queue: rest,
+        });
+      } else {
+        // Last prospect in this lane — check if the other lane is also done.
+        await ctx.scheduler.runAfter(0, internal.pipeline.checkRunComplete, {
+          runId,
+        });
+      }
     }
   },
 });
