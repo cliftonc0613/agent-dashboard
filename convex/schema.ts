@@ -24,11 +24,13 @@ export default defineSchema({
       v.literal("completed"),
       v.literal("failed"),
       v.literal("paused"),
+      v.literal("partial"),
     ),
     prospectsFound: v.number(),
     sitesBuilt: v.number(),
     totalCostUsd: v.number(),
     errorCount: v.number(),
+    triggeredBy: v.optional(v.union(v.literal("cron"), v.literal("manual"))),
   })
     .index("by_status", ["status"])
     .index("by_startedAt", ["startedAt"]),
@@ -114,6 +116,8 @@ export default defineSchema({
       dnsCreated: v.boolean(),
       imagesSourced: v.boolean(),
       designApplied: v.boolean(),
+      polishApplied: v.boolean(),
+      pagesPolished: v.boolean(),
     }),
   })
     .index("by_status", ["status"])
@@ -222,6 +226,7 @@ export default defineSchema({
     dailySendCap: v.number(),
     inputTokenCostPer1M: v.optional(v.number()),
     outputTokenCostPer1M: v.optional(v.number()),
+    pausedReason: v.optional(v.string()),
   }),
 
   // ─────────────────────────────────────────────────────────────────────────

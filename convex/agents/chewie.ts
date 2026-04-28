@@ -732,11 +732,7 @@ export const run = internalAction({
         status: "site_built",
       });
 
-      // Phase 5.5: schedule Luke's visual design pass after site is live.
-      await ctx.scheduler.runAfter(0, internal.agents.luke.run, {
-        prospectId: args.prospectId,
-        runId: args.runId,
-      });
+      // Phase 6: Luke is now scheduled by the pipeline orchestrator (convex/pipeline.ts), not by Chewie.
 
       await ctx.runMutation(internal.agentActions.complete, {
         id: actionId,
