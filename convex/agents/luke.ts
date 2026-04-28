@@ -41,6 +41,9 @@ import {
   stageTypesetSchema,
   stageBolderSchema,
   stageCssSchema,
+  stagePolishHtmlSchema,
+  stagePolishPageSchema,
+  stagePolishDuoSchema,
 } from "../lib/toolSchemas";
 import {
   LUKE_PROMPT_TASTE,
@@ -48,6 +51,10 @@ import {
   LUKE_PROMPT_TYPESET,
   LUKE_PROMPT_BOLDER,
   LUKE_PROMPT_CSS,
+  LUKE_PROMPT_POLISH_HTML,
+  LUKE_PROMPT_POLISH_COMPONENTS,
+  LUKE_PROMPT_POLISH_CONTENT_PAGES,
+  LUKE_PROMPT_POLISH_DETAIL_PAGE,
 } from "../lib/lukeDesignPrompt";
 import { callAgent, CostCeilingError } from "../lib/anthropic";
 import {
@@ -67,7 +74,7 @@ interface LukeDesignToolInput {
 }
 
 interface ProspectImageRecord {
-  role: "hero" | "about" | "extra";
+  role: "hero" | "about" | "extra" | string;
   url: string;
   source: SearchedImage["source"];
   attribution: string;
@@ -107,7 +114,10 @@ function upsertField(src: string, key: string, val: string): string {
   if (re.test(src)) {
     return src.replace(re, `$1$2${val}$4`);
   }
-  return src.replace(/(\n\}\s*;\s*)$/, `,\n  ${key}: '${val}',\n};`);
+  // Match the closing `};` of the `export const business` object. The file
+  // has content after that closing brace (e.g. yearsInBusiness), so we can't
+  // anchor with `$`. Instead match `};` preceded by the last property line.
+  return src.replace(/(export const business[\s\S]*?)(,?\n\};)(\s*\nexport function)/, `$1,\n  ${key}: '${val}',\n};$3`);
 }
 
 function summarizeLeiaForLuke(leia: unknown): string {
@@ -350,41 +360,129 @@ export const run = internalAction({
           );
         }
 
+        const images: ProspectImageRecord[] = [
+          { role: "hero", url: hero.url, source: hero.source, attribution: hero.attribution, alt: hero.alt },
+        ];
+        if (aboutImg) {
+          images.push({ role: "about", url: aboutImg.url, source: aboutImg.source, attribution: aboutImg.attribution, alt: aboutImg.alt });
+        }
+        if (extraImg) {
+          images.push({ role: "extra", url: extraImg.url, source: extraImg.source, attribution: extraImg.attribution, alt: extraImg.alt });
+        }
+
+        // Determine image pool size from the number of service areas in the deployed repo.
+        // Pool size = how many unique images to source per service slot so each city gets its own image.
+        const areasUrl = `https://api.github.com/repos/${githubUsername}/${repoName}/contents/src/data/serviceAreas.ts`;
+        const areasResp = await fetch(areasUrl, {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "rebel-alliance-luke",
+          },
+        });
+        let POOL_SIZE = 8;
+        if (areasResp.ok) {
+          const areasJson = (await areasResp.json()) as { content: string };
+          const areasTs = Buffer.from(areasJson.content, "base64").toString("utf8");
+          const areaCount = (areasTs.match(/slug:\s*["']/g) ?? []).length;
+          POOL_SIZE = Math.max(6, Math.min(12, areaCount));
+        }
+
+        // Also patch serviceTypes.ts — replace local /images/services/* paths
+        // with real CDN URLs, sourcing a pool of POOL_SIZE images per service slot.
+        const serviceTypesUrl = `https://api.github.com/repos/${githubUsername}/${repoName}/contents/src/data/serviceTypes.ts`;
+        const serviceTypesResp = await fetch(serviceTypesUrl, {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "rebel-alliance-luke",
+          },
+        });
+        let updatedServiceTypesTs: string | null = null;
+        if (serviceTypesResp.ok) {
+          const stJson = (await serviceTypesResp.json()) as {
+            content: string;
+            encoding: string;
+          };
+          let serviceTypesTs = Buffer.from(stJson.content, "base64").toString("utf8");
+
+          // Extract service names paired with their current image URL (local OR CDN).
+          // Match any image: value — not just local paths — so re-runs work correctly.
+          const pairRe = /name:\s*["']([^"']+)["'][^}]*?image:\s*["']([^"']+)["']/gs;
+          const pairs: { name: string; currentUrl: string }[] = [];
+          let m: RegExpExecArray | null;
+          while ((m = pairRe.exec(serviceTypesTs)) !== null) {
+            // Skip if this match is actually the secondaryImage field (name mis-matched)
+            pairs.push({ name: m[1], currentUrl: m[2] });
+          }
+
+          for (const { name, currentUrl } of pairs) {
+            // Source a full pool of images per slot — one call each returning POOL_SIZE results.
+            // Picsum padding ensures we always get exactly POOL_SIZE back.
+            const [primaryResults, secondaryResults] = await Promise.all([
+              searchImagesWithFallback(`${name}, professional service`, POOL_SIZE, unsplashKey, pexelsKey),
+              searchImagesWithFallback(`${name}, residential close-up`, POOL_SIZE, unsplashKey, pexelsKey),
+            ]);
+            const primary = primaryResults[0];
+            const secondary = secondaryResults[0];
+            const primaryUrls = primaryResults.map((r) => r.url);
+            const secondaryUrls = secondaryResults.map((r) => r.url);
+
+            const targetUrl = primary?.url ?? currentUrl;
+
+            // Replace local path OR existing CDN url with primary CDN url.
+            if (primary && primary.url !== currentUrl) {
+              serviceTypesTs = serviceTypesTs.replace(currentUrl, primary.url);
+              images.push({ role: `service:${name}`, url: primary.url, source: primary.source, attribution: primary.attribution, alt: primary.alt });
+            }
+
+            // Inject images pool, secondaryImage (single, legacy), and secondaryImages pool
+            // line-by-line after the image: field for this service.
+            const lines = serviceTypesTs.split("\n");
+            const out: string[] = [];
+            for (let i = 0; i < lines.length; i++) {
+              out.push(lines[i]);
+              if (lines[i].includes(targetUrl) && lines[i].trimStart().startsWith("image:")) {
+                const indent = lines[i].match(/^\s*/)?.[0] ?? "    ";
+                const nextLine = lines[i + 1] ?? "";
+                // images pool (NEW) — skip if already injected
+                if (!nextLine.includes("images:")) {
+                  out.push(`${indent}images: [${primaryUrls.map((u) => `'${u}'`).join(", ")}],`);
+                }
+                // secondaryImage single string (legacy, used by listings/cards)
+                if (!nextLine.includes("secondaryImage")) {
+                  if (secondary) {
+                    out.push(`${indent}secondaryImage: '${secondary.url}',`);
+                    images.push({ role: `service-secondary:${name}`, url: secondary.url, source: secondary.source, attribution: secondary.attribution, alt: secondary.alt });
+                  }
+                }
+                // secondaryImages pool (NEW) — skip if already injected
+                if (!nextLine.includes("secondaryImages:")) {
+                  out.push(`${indent}secondaryImages: [${secondaryUrls.map((u) => `'${u}'`).join(", ")}],`);
+                }
+              }
+            }
+            serviceTypesTs = out.join("\n");
+          }
+          updatedServiceTypesTs = serviceTypesTs;
+        }
+
+        const filesToCommit: { path: string; content: string }[] = [
+          { path: "src/data/business.ts", content: updatedBusinessTs },
+        ];
+        if (updatedServiceTypesTs) {
+          filesToCommit.push({ path: "src/data/serviceTypes.ts", content: updatedServiceTypesTs });
+        }
+
         const { commitSha: imageCommitSha } = await commitTree({
           githubToken,
           owner: githubUsername,
           repoName,
-          files: [{ path: "src/data/business.ts", content: updatedBusinessTs }],
-          commitMessage: "feat(luke): inject heroImage + aboutImage CDN URLs",
+          files: filesToCommit,
+          commitMessage: "feat(luke): inject heroImage, aboutImage, and service CDN URLs",
         });
-
-        const images: ProspectImageRecord[] = [
-          {
-            role: "hero",
-            url: hero.url,
-            source: hero.source,
-            attribution: hero.attribution,
-            alt: hero.alt,
-          },
-        ];
-        if (aboutImg) {
-          images.push({
-            role: "about",
-            url: aboutImg.url,
-            source: aboutImg.source,
-            attribution: aboutImg.attribution,
-            alt: aboutImg.alt,
-          });
-        }
-        if (extraImg) {
-          images.push({
-            role: "extra",
-            url: extraImg.url,
-            source: extraImg.source,
-            attribution: extraImg.attribution,
-            alt: extraImg.alt,
-          });
-        }
 
         await ctx.runMutation(internal.prospects.patch, {
           id: args.prospectId,
@@ -404,8 +502,19 @@ export const run = internalAction({
         if (!prospect) throw new Error(`Prospect ${args.prospectId} disappeared`);
       }
 
+      // Accumulators for all Claude stages across steps 3 and 4.
+      let totalInputTokens = 0;
+      let totalOutputTokens = 0;
+      let totalCostUsd = 0;
+
+      // Captured inside step 3 for use in the return value.
+      let capturedDesignCommitSha: string | undefined;
+      let capturedPolishCommitSha: string | undefined;
+      let capturedBrand500: string | undefined;
+      let capturedFonts: { display: string; body: string } | undefined;
+
       // ---------------------------------------------------------------------
-      // STEP 3 — designApplied (Claude call + atomic Trees commit)
+      // STEP 3 — designApplied (5-stage Claude pipeline + CSS/DESIGN.md commit)
       // ---------------------------------------------------------------------
       if (!prospect.buildSteps.designApplied) {
         const businessContext = composeLukeUserPrompt({
@@ -418,10 +527,6 @@ export const run = internalAction({
             | { images?: ProspectImageRecord[] }
             | null,
         });
-
-        let totalInputTokens = 0;
-        let totalOutputTokens = 0;
-        let totalCostUsd = 0;
 
         // --- Stage 1: taste-design -------------------------------------------
         const tasteResult = await callAgent({
@@ -551,12 +656,6 @@ export const run = internalAction({
           designMdBody: bolderOutput.designMdBody,
         };
 
-        const claudeResult = {
-          inputTokens: totalInputTokens,
-          outputTokens: totalOutputTokens,
-          costUsd: totalCostUsd,
-        };
-
         let brandColorScale: BrandColorScale;
         if (isValidBrandColorScale(design.brandColorScale)) {
           brandColorScale = design.brandColorScale;
@@ -572,6 +671,9 @@ export const run = internalAction({
           }
           brandColorScale = deriveBrandColorScale(fallbackPrimary);
         }
+
+        capturedBrand500 = brandColorScale.brand500;
+        capturedFonts = design.fonts;
 
         const newGlobalCss = cssOutput.css;
 
@@ -625,6 +727,8 @@ Generated by Luke Skywalker (Phase 5.5 design pass) — ${new Date().toISOString
             "feat(luke): apply visual design pass — brand tokens + DESIGN.md",
         });
 
+        capturedDesignCommitSha = designCommitSha;
+
         await ctx.runMutation(internal.prospects.patch, {
           id: args.prospectId,
           lukeOutput: {
@@ -643,43 +747,354 @@ Generated by Luke Skywalker (Phase 5.5 design pass) — ${new Date().toISOString
           id: args.prospectId,
           step: "designApplied",
         });
+        prospect = await ctx.runQuery(internal.prospects.get, {
+          id: args.prospectId,
+        });
+        if (!prospect) throw new Error(`Prospect ${args.prospectId} disappeared`);
+      }
 
-        // Wait for the new CF Pages build to go green so Ahsoka doesn't
-        // screenshot a stale deployment.
+      // ---------------------------------------------------------------------
+      // STEP 4 — polishApplied
+      //   4a. Deterministic: swap Google Fonts link in BaseLayout.astro
+      //   4b. Claude: rewrite index.astro with impeccable HTML polish
+      // Both files committed in one atomic Trees commit.
+      // ---------------------------------------------------------------------
+      if (!prospect.buildSteps.polishApplied) {
+        const savedOutput = prospect.lukeOutput as Record<string, unknown> | null;
+        const fonts =
+          (savedOutput?.fonts as { display: string; body: string } | undefined) ??
+          capturedFonts;
+        const savedAtmosphere = savedOutput?.atmosphere as string | undefined;
+        const savedBrandColorScale = savedOutput?.brandColorScale as BrandColorScale | undefined;
+        const savedPrinciples = savedOutput?.designPrinciples as string[] | undefined;
+
+        const polishFiles: { path: string; content: string }[] = [];
+
+        // --- 4a: fetch BaseLayout + patch font link (no Claude) --------------
+        const baseLayoutUrl = `https://api.github.com/repos/${githubUsername}/${repoName}/contents/src/layouts/BaseLayout.astro`;
+        const baseResp = await fetch(baseLayoutUrl, {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "rebel-alliance-luke",
+          },
+        });
+        if (baseResp.ok && fonts) {
+          const baseJson = (await baseResp.json()) as { content: string; encoding: string };
+          if (baseJson.encoding === "base64") {
+            const baseSrc = Buffer.from(baseJson.content, "base64").toString("utf8");
+            const displayFamily = fonts.display.replace(/ /g, "+");
+            const bodyFamily = fonts.body.replace(/ /g, "+");
+            const newFontUrl = `https://fonts.googleapis.com/css2?family=${displayFamily}:wght@400;500;600;700;800;900&family=${bodyFamily}:wght@300;400;500;600&display=swap`;
+            const patchedBase = baseSrc.replace(
+              /https:\/\/fonts\.googleapis\.com\/css2\?[^"']+/,
+              newFontUrl,
+            );
+            if (patchedBase !== baseSrc) {
+              polishFiles.push({ path: "src/layouts/BaseLayout.astro", content: patchedBase });
+              console.log(`[luke] font patch ready: ${fonts.display} + ${fonts.body}`);
+            }
+          }
+        }
+
+        // --- 4b: fetch index.astro + Claude polish call ----------------------
+        const indexUrl = `https://api.github.com/repos/${githubUsername}/${repoName}/contents/src/pages/index.astro`;
+        const indexResp = await fetch(indexUrl, {
+          headers: {
+            Authorization: `Bearer ${githubToken}`,
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "rebel-alliance-luke",
+          },
+        });
+        if (indexResp.ok) {
+          const indexJson = (await indexResp.json()) as { content: string; encoding: string };
+          if (indexJson.encoding === "base64") {
+            const indexSrc = Buffer.from(indexJson.content, "base64").toString("utf8");
+
+            const polishContext = [
+              "## Business",
+              `Name: ${prospect.businessName}`,
+              `Industry: ${prospect.industry}`,
+              `Market: ${prospect.market}`,
+              "",
+              "## Design Direction",
+              savedAtmosphere ? `Atmosphere: ${savedAtmosphere}` : "",
+              fonts ? `Display font: ${fonts.display}\nBody font: ${fonts.body}` : "",
+              savedBrandColorScale
+                ? `brand500: ${savedBrandColorScale.brand500}\nbrand50: ${savedBrandColorScale.brand50}\nbrand950: ${savedBrandColorScale.brand950}`
+                : "",
+              savedPrinciples?.length
+                ? `Design principles:\n${savedPrinciples.map((p) => `- ${p}`).join("\n")}`
+                : "",
+              "",
+              "## Current src/pages/index.astro",
+              "```",
+              indexSrc,
+              "```",
+            ]
+              .filter(Boolean)
+              .join("\n");
+
+            const polishResult = await callAgent({
+              ctx,
+              agentName: "luke",
+              system: LUKE_PROMPT_POLISH_HTML,
+              messages: [{ role: "user", content: polishContext }],
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              tools: [stagePolishHtmlSchema as any],
+              toolChoice: { type: "tool", name: stagePolishHtmlSchema.name },
+              runId: args.runId,
+              prospectId: args.prospectId,
+            });
+            const polishOutput = polishResult.toolUseResults[0]?.input as {
+              indexAstro: string;
+              changes: string[];
+            } | undefined;
+
+            if (polishOutput?.indexAstro) {
+              polishFiles.push({ path: "src/pages/index.astro", content: polishOutput.indexAstro });
+              totalInputTokens += polishResult.inputTokens;
+              totalOutputTokens += polishResult.outputTokens;
+              totalCostUsd += polishResult.costUsd;
+              console.log(`[luke] index.astro polish ready — ${polishOutput.changes.length} changes`);
+
+              await ctx.runMutation(internal.prospects.patch, {
+                id: args.prospectId,
+                lukeOutput: {
+                  ...((prospect.lukeOutput as Record<string, unknown> | null) ?? {}),
+                  polishChanges: polishOutput.changes,
+                },
+              });
+            }
+          }
+        } else {
+          console.warn(`[luke] could not fetch index.astro: ${indexResp.status} — skipping HTML polish`);
+        }
+
+        // --- commit both files atomically ------------------------------------
+        if (polishFiles.length > 0) {
+          const fileList = polishFiles.map((f) => f.path).join(", ");
+          const { commitSha: polishCommitSha } = await commitTree({
+            githubToken,
+            owner: githubUsername,
+            repoName,
+            files: polishFiles,
+            commitMessage: `feat(luke): polish pass — fonts + index.astro (${fileList})`,
+          });
+          capturedPolishCommitSha = polishCommitSha;
+        }
+
+        await ctx.runMutation(internal.prospects.markBuildStep, {
+          id: args.prospectId,
+          step: "polishApplied",
+        });
+
+        // Wait for CF Pages rebuild so Ahsoka screenshots the final polished state.
         await pollDeploymentReady({
           cfApiToken,
           cfAccountId,
           projectName: cfProjectName,
         });
-
-        await ctx.runMutation(internal.agentActions.complete, {
-          id: actionId,
-          status: "success",
-          inputTokens: claudeResult.inputTokens,
-          outputTokens: claudeResult.outputTokens,
-          costUsd: claudeResult.costUsd,
-          finishedAt: Date.now(),
-        });
-
-        return {
-          ok: true as const,
-          prospectId: args.prospectId,
-          designCommitSha,
-          brand500: brandColorScale.brand500,
-          fonts: design.fonts,
-          inputTokens: claudeResult.inputTokens,
-          outputTokens: claudeResult.outputTokens,
-          costUsd: claudeResult.costUsd,
-        };
       }
 
-      // All three steps already complete — idempotent no-op resume path.
+      // ---------------------------------------------------------------------
+      // STEP 5 — pagesPolished (Header, Footer, content pages, detail templates)
+      //   5 Claude calls, one file or two per call, all committed atomically.
+      // ---------------------------------------------------------------------
+      if (!prospect.buildSteps.pagesPolished) {
+        const savedOutput = prospect.lukeOutput as Record<string, unknown> | null;
+        const fonts =
+          (savedOutput?.fonts as { display: string; body: string } | undefined) ??
+          capturedFonts;
+        const savedAtmosphere = savedOutput?.atmosphere as string | undefined;
+        const savedBrandColorScale = savedOutput?.brandColorScale as BrandColorScale | undefined;
+        const savedPrinciples = savedOutput?.designPrinciples as string[] | undefined;
+
+        const designContext = [
+          `Industry: ${prospect.industry}`,
+          `Market: ${prospect.market}`,
+          savedAtmosphere ? `Atmosphere: ${savedAtmosphere}` : "",
+          fonts ? `Display font: ${fonts.display} | Body font: ${fonts.body}` : "",
+          savedBrandColorScale
+            ? `brand500: ${savedBrandColorScale.brand500} | brand50: ${savedBrandColorScale.brand50} | brand950: ${savedBrandColorScale.brand950}`
+            : "",
+          savedPrinciples?.length
+            ? `Design principles: ${savedPrinciples.join(" | ")}`
+            : "",
+        ].filter(Boolean).join("\n");
+
+        // Helper: fetch a file from the prospect's GitHub repo.
+        async function fetchFile(filePath: string): Promise<string | null> {
+          const encoded = filePath.replace(/\[/g, "%5B").replace(/\]/g, "%5D");
+          const url = `https://api.github.com/repos/${githubUsername}/${repoName}/contents/${encoded}`;
+          const resp = await fetch(url, {
+            headers: {
+              Authorization: `Bearer ${githubToken}`,
+              Accept: "application/vnd.github+json",
+              "X-GitHub-Api-Version": "2022-11-28",
+              "User-Agent": "rebel-alliance-luke",
+            },
+          });
+          if (!resp.ok) {
+            console.warn(`[luke pages] Could not fetch ${filePath}: ${resp.status}`);
+            return null;
+          }
+          const json = (await resp.json()) as { content: string; encoding: string };
+          if (json.encoding !== "base64") return null;
+          return Buffer.from(json.content, "base64").toString("utf8");
+        }
+
+        const pagesFiles: { path: string; content: string }[] = [];
+
+        // --- Call 1: Header + Footer -----------------------------------------
+        const [headerSrc, footerSrc] = await Promise.all([
+          fetchFile("src/components/Header.astro"),
+          fetchFile("src/components/Footer.astro"),
+        ]);
+        if (headerSrc && footerSrc) {
+          const duoCtx = `## Business\nName: ${prospect.businessName}\n${designContext}\n\n## FILE A — src/components/Header.astro\n\`\`\`\n${headerSrc}\n\`\`\`\n\n## FILE B — src/components/Footer.astro\n\`\`\`\n${footerSrc}\n\`\`\``;
+          const r = await callAgent({
+            ctx, agentName: "luke", system: LUKE_PROMPT_POLISH_COMPONENTS,
+            messages: [{ role: "user", content: duoCtx }],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tools: [stagePolishDuoSchema as any],
+            toolChoice: { type: "tool", name: stagePolishDuoSchema.name },
+            runId: args.runId, prospectId: args.prospectId,
+          });
+          const out = r.toolUseResults[0]?.input as { fileA: string; fileB: string } | undefined;
+          if (out?.fileA) pagesFiles.push({ path: "src/components/Header.astro", content: out.fileA });
+          if (out?.fileB) pagesFiles.push({ path: "src/components/Footer.astro", content: out.fileB });
+          totalInputTokens += r.inputTokens; totalOutputTokens += r.outputTokens; totalCostUsd += r.costUsd;
+          console.log(`[luke pages] Header + Footer polished`);
+        }
+
+        // --- Call 2: about.astro + contact.astro -----------------------------
+        const [aboutSrc, contactSrc] = await Promise.all([
+          fetchFile("src/pages/about.astro"),
+          fetchFile("src/pages/contact.astro"),
+        ]);
+        if (aboutSrc && contactSrc) {
+          const duoCtx = `## Business\nName: ${prospect.businessName}\n${designContext}\n\n## FILE A — src/pages/about.astro\n\`\`\`\n${aboutSrc}\n\`\`\`\n\n## FILE B — src/pages/contact.astro\n\`\`\`\n${contactSrc}\n\`\`\``;
+          const r = await callAgent({
+            ctx, agentName: "luke", system: LUKE_PROMPT_POLISH_CONTENT_PAGES,
+            messages: [{ role: "user", content: duoCtx }],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tools: [stagePolishDuoSchema as any],
+            toolChoice: { type: "tool", name: stagePolishDuoSchema.name },
+            runId: args.runId, prospectId: args.prospectId,
+          });
+          const out = r.toolUseResults[0]?.input as { fileA: string; fileB: string } | undefined;
+          if (out?.fileA) pagesFiles.push({ path: "src/pages/about.astro", content: out.fileA });
+          if (out?.fileB) pagesFiles.push({ path: "src/pages/contact.astro", content: out.fileB });
+          totalInputTokens += r.inputTokens; totalOutputTokens += r.outputTokens; totalCostUsd += r.costUsd;
+          console.log(`[luke pages] about + contact polished`);
+        }
+
+        // --- Call 3: services/index.astro + areas/index.astro ----------------
+        const [svcIndexSrc, areaIndexSrc] = await Promise.all([
+          fetchFile("src/pages/services/index.astro"),
+          fetchFile("src/pages/areas/index.astro"),
+        ]);
+        if (svcIndexSrc && areaIndexSrc) {
+          const duoCtx = `## Business\nName: ${prospect.businessName}\n${designContext}\n\n## FILE A — src/pages/services/index.astro\n\`\`\`\n${svcIndexSrc}\n\`\`\`\n\n## FILE B — src/pages/areas/index.astro\n\`\`\`\n${areaIndexSrc}\n\`\`\``;
+          const r = await callAgent({
+            ctx, agentName: "luke", system: LUKE_PROMPT_POLISH_CONTENT_PAGES,
+            messages: [{ role: "user", content: duoCtx }],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tools: [stagePolishDuoSchema as any],
+            toolChoice: { type: "tool", name: stagePolishDuoSchema.name },
+            runId: args.runId, prospectId: args.prospectId,
+          });
+          const out = r.toolUseResults[0]?.input as { fileA: string; fileB: string } | undefined;
+          if (out?.fileA) pagesFiles.push({ path: "src/pages/services/index.astro", content: out.fileA });
+          if (out?.fileB) pagesFiles.push({ path: "src/pages/areas/index.astro", content: out.fileB });
+          totalInputTokens += r.inputTokens; totalOutputTokens += r.outputTokens; totalCostUsd += r.costUsd;
+          console.log(`[luke pages] services/index + areas/index polished`);
+        }
+
+        // --- Call 4: services/[service].astro --------------------------------
+        const serviceSrc = await fetchFile("src/pages/services/[service].astro");
+        if (serviceSrc) {
+          const pageCtx = `## Business\nName: ${prospect.businessName}\n${designContext}\n\n## File: src/pages/services/[service].astro\n\`\`\`\n${serviceSrc}\n\`\`\``;
+          const r = await callAgent({
+            ctx, agentName: "luke", system: LUKE_PROMPT_POLISH_DETAIL_PAGE,
+            messages: [{ role: "user", content: pageCtx }],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tools: [stagePolishPageSchema as any],
+            toolChoice: { type: "tool", name: stagePolishPageSchema.name },
+            runId: args.runId, prospectId: args.prospectId,
+          });
+          const out = r.toolUseResults[0]?.input as { content: string } | undefined;
+          if (out?.content) pagesFiles.push({ path: "src/pages/services/[service].astro", content: out.content });
+          totalInputTokens += r.inputTokens; totalOutputTokens += r.outputTokens; totalCostUsd += r.costUsd;
+          console.log(`[luke pages] services/[service].astro polished`);
+        }
+
+        // --- Call 5: areas/[area].astro --------------------------------------
+        const areaSrc = await fetchFile("src/pages/areas/[area].astro");
+        if (areaSrc) {
+          const pageCtx = `## Business\nName: ${prospect.businessName}\n${designContext}\n\n## File: src/pages/areas/[area].astro\n\`\`\`\n${areaSrc}\n\`\`\``;
+          const r = await callAgent({
+            ctx, agentName: "luke", system: LUKE_PROMPT_POLISH_DETAIL_PAGE,
+            messages: [{ role: "user", content: pageCtx }],
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            tools: [stagePolishPageSchema as any],
+            toolChoice: { type: "tool", name: stagePolishPageSchema.name },
+            runId: args.runId, prospectId: args.prospectId,
+          });
+          const out = r.toolUseResults[0]?.input as { content: string } | undefined;
+          if (out?.content) pagesFiles.push({ path: "src/pages/areas/[area].astro", content: out.content });
+          totalInputTokens += r.inputTokens; totalOutputTokens += r.outputTokens; totalCostUsd += r.costUsd;
+          console.log(`[luke pages] areas/[area].astro polished`);
+        }
+
+        // --- Commit all polished pages atomically ----------------------------
+        if (pagesFiles.length > 0) {
+          await commitTree({
+            githubToken,
+            owner: githubUsername,
+            repoName,
+            files: pagesFiles,
+            commitMessage: `feat(luke): polish all pages — ${pagesFiles.length} files updated`,
+          });
+          console.log(`[luke pages] committed ${pagesFiles.length} polished files`);
+        }
+
+        await ctx.runMutation(internal.prospects.markBuildStep, {
+          id: args.prospectId,
+          step: "pagesPolished",
+        });
+
+        await pollDeploymentReady({
+          cfApiToken,
+          cfAccountId,
+          projectName: cfProjectName,
+        });
+      }
+
+      // All five steps complete — mark the action and return.
       await ctx.runMutation(internal.agentActions.complete, {
         id: actionId,
         status: "success",
+        inputTokens: totalInputTokens || undefined,
+        outputTokens: totalOutputTokens || undefined,
+        costUsd: totalCostUsd || undefined,
         finishedAt: Date.now(),
       });
-      return { ok: true as const, prospectId: args.prospectId, alreadyDone: true };
+
+      return {
+        ok: true as const,
+        prospectId: args.prospectId,
+        designCommitSha: capturedDesignCommitSha,
+        polishCommitSha: capturedPolishCommitSha,
+        brand500: capturedBrand500,
+        fonts: capturedFonts,
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        costUsd: totalCostUsd,
+      };
     } catch (err) {
       const isCostCeiling = err instanceof CostCeilingError;
       const msg = err instanceof Error ? err.message : String(err);
