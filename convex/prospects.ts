@@ -40,6 +40,8 @@ export const insert = internalMutation({
       dnsCreated: v.boolean(),
       imagesSourced: v.boolean(),
       designApplied: v.boolean(),
+      polishApplied: v.boolean(),
+      pagesPolished: v.boolean(),
     }),
     rejectionReason: v.optional(v.string()),
   },
@@ -104,6 +106,8 @@ export const markBuildStep = internalMutation({
       v.literal("dnsCreated"),
       v.literal("imagesSourced"),
       v.literal("designApplied"),
+      v.literal("polishApplied"),
+      v.literal("pagesPolished"),
     ),
     extra: v.optional(
       v.object({
@@ -137,5 +141,33 @@ export const getById = query({
   args: { id: v.id("prospects") },
   handler: async (ctx, { id }) => {
     return await ctx.db.get(id);
+  },
+});
+
+// Phase 6 — orchestrator fan-out: pull all prospects belonging to a run.
+export const listByRun = internalQuery({
+  args: { runId: v.id("runs") },
+  handler: async (ctx, { runId }) => {
+    return await ctx.db
+      .query("prospects")
+      .withIndex("by_runId", (q) => q.eq("runId", runId))
+      .collect();
+  },
+});
+
+// Phase 6 — per-prospect retry counter. At retryCount >= 3, status flips to
+// "failed" so the orchestrator stops re-scheduling this prospect.
+export const incrementRetry = internalMutation({
+  args: { id: v.id("prospects") },
+  handler: async (ctx, { id }) => {
+    const prospect = await ctx.db.get(id);
+    if (!prospect) throw new Error(`Prospect ${id} not found`);
+    const newCount = prospect.retryCount + 1;
+    const patch: Record<string, unknown> = { retryCount: newCount };
+    if (newCount >= 3) {
+      patch.status = "failed";
+    }
+    await ctx.db.patch(id, patch);
+    return { retryCount: newCount, markedFailed: newCount >= 3 };
   },
 });
