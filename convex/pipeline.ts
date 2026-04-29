@@ -107,7 +107,7 @@ export const runDaily = action({
         runId,
         market: market ?? "Greenville, SC",
         niche: niche ?? "landscaper",
-        targetCount: targetCount ?? 2,
+        targetCount: targetCount ?? 4,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
