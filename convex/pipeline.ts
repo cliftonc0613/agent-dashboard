@@ -1,4 +1,3 @@
-"use node";
 import { v } from "convex/values";
 import {
   action,
@@ -6,7 +5,7 @@ import {
   internalMutation,
 } from "./_generated/server";
 import { api, internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { ActionCtx } from "./_generated/server";
 
 /**
@@ -49,10 +48,15 @@ export const runDaily = action({
     const { triggeredBy, market, niche, targetCount } = args;
 
     // GATE 1: Re-entrancy guard — transactional, prevents duplicate runs.
-    const { runId, alreadyActive } = await ctx.runMutation(
-      internal.runs.createIfNotActive,
-      { triggeredBy },
-    );
+    // Explicit annotation breaks the circular type inference (see STATE.md
+    // 03-03 invariant: any ctx.runMutation returning Id<"table"> may hit TS7022).
+    const reentry: {
+      runId: Id<"runs"> | null;
+      alreadyActive: Id<"runs"> | null;
+    } = await ctx.runMutation(internal.runs.createIfNotActive, {
+      triggeredBy,
+    });
+    const { runId, alreadyActive } = reentry;
     if (!runId) {
       await ctx.runAction(internal.lib.telegram.sendTelegram, {
         character: "C-3PO",
@@ -129,9 +133,10 @@ export const runDaily = action({
     }
 
     // Pull prospects R2 just inserted for this run.
-    const prospects = await ctx.runQuery(internal.prospects.listByRun, {
-      runId,
-    });
+    const prospects: Doc<"prospects">[] = await ctx.runQuery(
+      internal.prospects.listByRun,
+      { runId },
+    );
     await ctx.runMutation(internal.runs.update, {
       id: runId,
       prospectsFound: prospects.length,
@@ -366,5 +371,82 @@ export const processProspect = internalAction({
         });
       }
     }
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Run finalization
+// ---------------------------------------------------------------------------
+
+// Called by last prospect in each lane — checks if all prospects are terminal.
+export const checkRunComplete = internalAction({
+  args: { runId: v.id("runs") },
+  handler: async (ctx, { runId }) => {
+    const prospects: Doc<"prospects">[] = await ctx.runQuery(
+      internal.prospects.listByRun,
+      { runId },
+    );
+    const TERMINAL = new Set([
+      "approved",
+      "rejected",
+      "failed",
+      "needs_manual_review",
+    ]);
+    const allDone = prospects.every((p) => TERMINAL.has(p.status));
+    if (allDone) {
+      await ctx.scheduler.runAfter(0, internal.pipeline.finalizeRun, { runId });
+    }
+  },
+});
+
+// Closes out a run — idempotent (safe to call twice).
+export const finalizeRun = internalAction({
+  args: { runId: v.id("runs") },
+  handler: async (ctx, { runId }) => {
+    const run = await ctx.runQuery(api.runs.getById, { id: runId });
+    if (!run) return;
+    if (run.status !== "running") return; // already finalized
+
+    const prospects: Doc<"prospects">[] = await ctx.runQuery(
+      internal.prospects.listByRun,
+      { runId },
+    );
+    const approvedCount = prospects.filter(
+      (p) => p.status === "approved",
+    ).length;
+    const failedCount = prospects.filter(
+      (p) => p.status === "failed",
+    ).length;
+    const rejectedCount = prospects.filter(
+      (p) => p.status === "rejected",
+    ).length;
+
+    let finalStatus: "completed" | "failed" | "partial";
+    if (prospects.length === 0) {
+      finalStatus = "completed";
+    } else if (failedCount === prospects.length) {
+      finalStatus = "failed";
+    } else if (approvedCount === prospects.length) {
+      finalStatus = "completed";
+    } else {
+      finalStatus = "partial";
+    }
+
+    const ceiling = await ctx.runQuery(
+      internal.agentActions.getCeilingState,
+      { runId },
+    );
+    await ctx.runMutation(internal.runs.complete, {
+      id: runId,
+      status: finalStatus,
+      totalCostUsd: ceiling.runCostSoFar,
+    });
+
+    await ctx.runAction(internal.lib.telegram.sendTelegram, {
+      character: "Yoda",
+      level: finalStatus === "completed" ? "success" : "warning",
+      title: `Run finished — ${finalStatus}`,
+      body: `Prospects: ${prospects.length}\nApproved: ${approvedCount}\nRejected: ${rejectedCount}\nFailed: ${failedCount}\nCost: $${ceiling.runCostSoFar.toFixed(2)}`,
+    });
   },
 });
