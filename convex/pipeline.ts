@@ -105,7 +105,7 @@ export const runDaily = action({
     try {
       await ctx.runAction(internal.agents.r2.run, {
         runId,
-        market: market ?? "Boise, ID",
+        market: market ?? "Greenville, SC",
         niche: niche ?? "plumber",
         targetCount: targetCount ?? 5,
       });
