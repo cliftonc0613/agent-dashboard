@@ -203,7 +203,10 @@ export async function searchImagesWithFallback(
     const remaining = count - unsplash.length;
     const pexels = await searchPexels(query, remaining, pexelsKey);
     const combined = [...unsplash, ...pexels];
-    if (combined.length > 0) return combined;
+    if (combined.length >= count) return combined;
+    // Pad to count with Picsum so callers always get exactly `count` results.
+    const picsum = picsumFallback(query, count - combined.length);
+    return [...combined, ...picsum];
   } catch {
     // fall through to Picsum
   }

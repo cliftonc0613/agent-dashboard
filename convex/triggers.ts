@@ -78,6 +78,8 @@ export const resetLuke = mutation({
         dnsCreated: false,
         imagesSourced: false,
         designApplied: false,
+        polishApplied: false,
+        pagesPolished: false,
       },
       lukeOutput: undefined,
       lukeFailedReason: undefined,

@@ -264,6 +264,8 @@ export const run = internalAction({
                   dnsCreated: false,
                   imagesSourced: false,
                   designApplied: false,
+                  polishApplied: false,
+                  pagesPolished: false,
                 },
               },
             );

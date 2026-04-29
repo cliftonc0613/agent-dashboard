@@ -677,6 +677,76 @@ export const stageCssSchema = {
   },
 } as const;
 
+export const stagePolishHtmlSchema = {
+  name: "stage_polish_html",
+  description: "Stage 6 — rewrite src/pages/index.astro to apply impeccable polish: fix industry copy, apply atmosphere to section structure, improve interaction classes, remove generic gradients.",
+  input_schema: {
+    type: "object",
+    properties: {
+      indexAstro: {
+        type: "string",
+        description: "The complete rewritten src/pages/index.astro. Full file from line 1 to end. All dynamic Astro expressions ({business.name} etc.) preserved exactly.",
+      },
+      changes: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 3,
+        maxItems: 8,
+        description: "What changed in each section and why — e.g. 'Hero: replaced radial-gradient overlay with brand-900/60 solid — the atmosphere is warmth not tech glow'",
+      },
+    },
+    required: ["indexAstro", "changes"],
+  },
+} as const;
+
+export const stagePolishPageSchema = {
+  name: "stage_polish_page",
+  description: "Polish a single Astro page — fix industry copy, apply atmosphere, fix colors. Return the complete rewritten file.",
+  input_schema: {
+    type: "object",
+    properties: {
+      content: {
+        type: "string",
+        description: "Complete rewritten file content from line 1 to end. All dynamic Astro expressions preserved exactly.",
+      },
+      changes: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 2,
+        maxItems: 6,
+        description: "What changed and why — one bullet per section modified",
+      },
+    },
+    required: ["content", "changes"],
+  },
+} as const;
+
+export const stagePolishDuoSchema = {
+  name: "stage_polish_duo",
+  description: "Polish two related Astro files at once — fix industry copy, apply atmosphere, fix colors. Return both complete rewritten files.",
+  input_schema: {
+    type: "object",
+    properties: {
+      fileA: {
+        type: "string",
+        description: "Complete rewritten content of the FIRST file (as labeled in the prompt).",
+      },
+      fileB: {
+        type: "string",
+        description: "Complete rewritten content of the SECOND file (as labeled in the prompt).",
+      },
+      changes: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 2,
+        maxItems: 8,
+        description: "What changed across both files and why",
+      },
+    },
+    required: ["fileA", "fileB", "changes"],
+  },
+} as const;
+
 export const stageBolderSchema = {
   name: "stage_bolder",
   description: "Stage 4 — bolder + polish: design principles, art-directed image queries, DESIGN.md body",
