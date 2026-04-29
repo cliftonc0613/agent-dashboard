@@ -40,6 +40,7 @@ import type * as lib_serpapi from "../lib/serpapi.js";
 import type * as lib_telegram from "../lib/telegram.js";
 import type * as lib_toolSchemas from "../lib/toolSchemas.js";
 import type * as migrations_debugBuildSteps from "../migrations/debugBuildSteps.js";
+import type * as migrations_fixStuckRun from "../migrations/fixStuckRun.js";
 import type * as migrations_lukeBuildStepsBackfill from "../migrations/lukeBuildStepsBackfill.js";
 import type * as migrations_lukePagesBackfill from "../migrations/lukePagesBackfill.js";
 import type * as migrations_lukePolishBackfill from "../migrations/lukePolishBackfill.js";
@@ -92,6 +93,7 @@ declare const fullApi: ApiFromModules<{
   "lib/telegram": typeof lib_telegram;
   "lib/toolSchemas": typeof lib_toolSchemas;
   "migrations/debugBuildSteps": typeof migrations_debugBuildSteps;
+  "migrations/fixStuckRun": typeof migrations_fixStuckRun;
   "migrations/lukeBuildStepsBackfill": typeof migrations_lukeBuildStepsBackfill;
   "migrations/lukePagesBackfill": typeof migrations_lukePagesBackfill;
   "migrations/lukePolishBackfill": typeof migrations_lukePolishBackfill;
