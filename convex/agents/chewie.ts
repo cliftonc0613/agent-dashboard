@@ -725,7 +725,7 @@ export const run = internalAction({
         } catch {
           // Cert not ready within polling window — fall back to pages.dev URL.
           // The cert will propagate on its own; Ahsoka can review the pages.dev URL.
-          resolvedSiteUrl = pagesDevUrl;
+          resolvedSiteUrl = pagesDevUrl ?? customDomainUrl;
         }
         await ctx.runMutation(internal.prospects.markBuildStep, {
           id: args.prospectId,
