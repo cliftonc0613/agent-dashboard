@@ -51,7 +51,7 @@ import {
   triggerDeployment,
   attachCustomDomain,
   pollDeploymentReady,
-  pollSslReady,
+
 } from "../lib/cloudflare";
 
 // ---------------------------------------------------------------------------
@@ -714,19 +714,9 @@ export const run = internalAction({
         throw new Error(`Prospect ${args.prospectId} disappeared`);
 
       if (!prospectAfterStep5.buildSteps.certReady) {
-        let resolvedSiteUrl = customDomainUrl;
-        try {
-          await pollSslReady({
-            cfAccountId,
-            cfApiToken,
-            projectName: cfProjectName,
-            domainName: customSubdomain,
-          });
-        } catch {
-          // Cert not ready within polling window — fall back to pages.dev URL.
-          // The cert will propagate on its own; Ahsoka can review the pages.dev URL.
-          resolvedSiteUrl = pagesDevUrl ?? customDomainUrl;
-        }
+        // Use pages.dev URL immediately — cert propagates on its own (can take 5-30 min).
+        // Blocking the pipeline on SSL is not worth the risk of action timeouts.
+        const resolvedSiteUrl = pagesDevUrl ?? customDomainUrl;
         await ctx.runMutation(internal.prospects.markBuildStep, {
           id: args.prospectId,
           step: "certReady",
