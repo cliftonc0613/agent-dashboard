@@ -714,16 +714,23 @@ export const run = internalAction({
         throw new Error(`Prospect ${args.prospectId} disappeared`);
 
       if (!prospectAfterStep5.buildSteps.certReady) {
-        await pollSslReady({
-          cfAccountId,
-          cfApiToken,
-          projectName: cfProjectName,
-          domainName: customSubdomain,
-        });
+        let resolvedSiteUrl = customDomainUrl;
+        try {
+          await pollSslReady({
+            cfAccountId,
+            cfApiToken,
+            projectName: cfProjectName,
+            domainName: customSubdomain,
+          });
+        } catch {
+          // Cert not ready within polling window — fall back to pages.dev URL.
+          // The cert will propagate on its own; Ahsoka can review the pages.dev URL.
+          resolvedSiteUrl = pagesDevUrl;
+        }
         await ctx.runMutation(internal.prospects.markBuildStep, {
           id: args.prospectId,
           step: "certReady",
-          extra: { siteUrl: customDomainUrl },
+          extra: { siteUrl: resolvedSiteUrl },
         });
       }
 
