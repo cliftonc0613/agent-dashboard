@@ -199,9 +199,9 @@ export const run = internalAction({
         id: args.prospectId,
       });
       if (!prospect) throw new Error(`Prospect ${args.prospectId} not found`);
-      if (prospect.status !== "site_built") {
+      if (!prospect.buildSteps?.deployed) {
         throw new Error(
-          `Luke requires status=site_built, got: ${prospect.status}`,
+          `Luke requires buildSteps.deployed=true, got status: ${prospect.status}`,
         );
       }
       if (!prospect.repoName) throw new Error("Luke: missing prospect.repoName");
