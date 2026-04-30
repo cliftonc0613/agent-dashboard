@@ -138,17 +138,20 @@ async function handleProspectFailure(
   });
   await ctx.runMutation(internal.runs.incrementErrorCount, { id: runId });
 
-  const result = await ctx.runMutation(internal.prospects.incrementRetry, {
+  // Set terminal status immediately so checkRunComplete can close the run.
+  // Each agent has its own 10-min budget in the per-agent design — no retries needed.
+  await ctx.runMutation(internal.prospects.patch, {
     id: prospectId,
+    status: "failed",
+    rejectionReason: message.slice(0, 200),
   });
-  if (result.markedFailed) {
-    await ctx.runAction(internal.lib.telegram.sendTelegram, {
-      character: "C-3PO",
-      level: "error",
-      title: "Prospect failed after 3 attempts",
-      body: `Prospect ${prospectId}: ${message}`,
-    });
-  }
+
+  await ctx.runAction(internal.lib.telegram.sendTelegram, {
+    character: "C-3PO",
+    level: "error",
+    title: "Prospect failed",
+    body: `Prospect ${prospectId}: ${message}`,
+  });
 }
 
 // ---------------------------------------------------------------------------
